@@ -184,7 +184,7 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 													<FormControl>
 														<Textarea
 															placeholder="Paste notes here, or upload a PDF above to fill this automatically…"
-															className="min-h-48 resize-y font-mono text-xs"
+															className="h-64 max-h-[50vh] resize-none overflow-y-auto font-mono text-xs"
 															{...field}
 															value={field.value ?? ""}
 														/>

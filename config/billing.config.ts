@@ -610,23 +610,23 @@ export type CreditModel = keyof typeof creditCosts;
  */
 export const chatModels = [
 	{
-		id: "gemini-2.0-flash" as const,
-		name: "Gemini 2.0 Flash",
+		id: "gemini-2.5-flash" as const,
+		name: "Gemini 2.5 Flash",
 		description: "Fast & capable (recommended)",
 		tier: "standard" as const,
 		provider: "google" as const,
 	},
 	{
-		id: "gemini-1.5-flash" as const,
-		name: "Gemini 1.5 Flash",
-		description: "Fast & affordable",
+		id: "gemini-2.5-flash-lite" as const,
+		name: "Gemini 2.5 Flash Lite",
+		description: "Fastest & most affordable",
 		tier: "budget" as const,
 		provider: "google" as const,
 	},
 	{
-		id: "gemini-1.5-pro" as const,
-		name: "Gemini 1.5 Pro",
-		description: "High capability",
+		id: "gemini-2.5-pro" as const,
+		name: "Gemini 2.5 Pro",
+		description: "Highest capability",
 		tier: "premium" as const,
 		provider: "google" as const,
 	},
@@ -638,7 +638,7 @@ export type ChatModelTier = ChatModel["tier"];
 export type ChatModelProvider = ChatModel["provider"];
 
 /** Default model for new chats */
-export const DEFAULT_CHAT_MODEL: ChatModelId = "gemini-2.0-flash";
+export const DEFAULT_CHAT_MODEL: ChatModelId = "gemini-2.5-flash";
 
 /**
  * Get credit cost info for a chat model (average per message estimate)

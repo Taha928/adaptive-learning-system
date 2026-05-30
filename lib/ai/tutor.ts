@@ -5,6 +5,10 @@ import { DEFAULT_CHAT_MODEL } from "@/config/billing.config";
  * Central AI configuration for the Personalized Learning Tutor Agent.
  * All tutor features (chat, quiz generation, study plans) resolve their model
  * and persona through here so behaviour stays consistent.
+ *
+ * Uses Google Gemini natively via @ai-sdk/google (reads GOOGLE_GENERATIVE_AI_API_KEY).
+ * Native is preferred over an OpenAI-compatible gateway because structured output
+ * (generateObject for quizzes/topics/plans) is more reliable.
  */
 
 export const TUTOR_SYSTEM_PROMPT = `You are an adaptive personal learning tutor.
@@ -13,7 +17,7 @@ guiding hints rather than the full answer. Adjust the depth of your explanations
 to the student's demonstrated level of understanding. Be encouraging, patient,
 and concise.`;
 
-/** Resolve the Gemini model used for tutor generation tasks. */
+/** Resolve the Gemini model used for tutor tasks (chat + generation). */
 export function tutorModel(modelId: string = DEFAULT_CHAT_MODEL) {
 	return google(modelId);
 }

@@ -5,10 +5,7 @@ import {
 	BotIcon,
 	ChartColumnIcon,
 	ChevronRight,
-	CoinsIcon,
-	CreditCardIcon,
 	GraduationCapIcon,
-	LayoutDashboardIcon,
 	ListChecksIcon,
 	SettingsIcon,
 	UsersIcon,
@@ -63,12 +60,6 @@ export function OrganizationMenuItems(): React.JSX.Element {
 			label: "Application",
 			items: [
 				{
-					label: "Dashboard",
-					href: basePath,
-					icon: LayoutDashboardIcon,
-					exactMatch: true,
-				},
-				{
 					label: "Courses",
 					href: `${basePath}/courses`,
 					icon: BookOpenIcon,
@@ -108,16 +99,6 @@ export function OrganizationMenuItems(): React.JSX.Element {
 					label: "Members",
 					href: `${basePath}/settings?tab=members`,
 					icon: UsersIcon,
-				},
-				{
-					label: "Subscription",
-					href: `${basePath}/settings?tab=subscription`,
-					icon: CreditCardIcon,
-				},
-				{
-					label: "Credits",
-					href: `${basePath}/settings?tab=credits`,
-					icon: CoinsIcon,
 				},
 			],
 			collapsible: false,
