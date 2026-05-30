@@ -5,60 +5,64 @@ import { cn } from "@/lib/utils";
 const changelog = [
 	{
 		version: "2.1.0",
-		date: "December 2025",
+		date: "May 2026",
 		items: [
 			{
-				title: "Team workspaces",
+				title: "Adaptive study plans",
 				description:
-					"Create separate workspaces for different teams or projects.",
+					"Tell Lumen your goal and exam date — it builds a day-by-day plan and reshuffles as your mastery changes.",
 			},
 			{
-				title: "Custom fields",
+				title: "Short-answer grading",
 				description:
-					"Add your own fields to track the data that matters to you.",
+					"Open-ended questions are now graded with AI feedback that explains exactly what was missing.",
 			},
 			{
-				title: "Faster search",
-				description: "Search results now appear instantly as you type.",
+				title: "Citations in tutor replies",
+				description:
+					"Every answer links back to the exact slide or page in your uploaded material.",
 			},
 		],
 	},
 	{
 		version: "2.0.0",
-		date: "November 2025",
+		date: "March 2026",
 		items: [
 			{
-				title: "New dashboard",
+				title: "Mastery analytics",
 				description:
-					"Completely redesigned dashboard with better insights at a glance.",
+					"Per-topic mastery scores, time-on-task and quiz trends so you study where it counts.",
 			},
 			{
-				title: "Mobile app",
+				title: "Class workspaces",
 				description:
-					"Access your data on the go with our new iOS and Android apps.",
+					"Share courses with classmates and let instructors track a whole cohort's progress.",
 			},
 			{
-				title: "Integrations",
-				description: "Connect with Slack, Google Workspace and more.",
+				title: "Gemini 2.5 tutor",
+				description:
+					"Upgraded the tutor to Gemini 2.5 for faster, more grounded explanations.",
 			},
 		],
 	},
 	{
 		version: "1.0.0",
-		date: "October 2025",
+		date: "January 2026",
 		items: [
 			{
 				title: "Launch",
 				description:
-					"First public release with core features for team collaboration.",
+					"Upload materials, auto-build courses and topics, and chat with a tutor grounded in your notes.",
 			},
 			{
-				title: "Team management",
-				description: "Invite team members, set roles and work together.",
+				title: "AI quiz generation",
+				description:
+					"Generate multiple-choice, true/false and short-answer quizzes from any topic.",
 			},
 			{
-				title: "Data export",
-				description: "Export your data anytime in CSV or JSON format.",
+				title: "Progress tracking",
+				description:
+					"Track attempts, scores and what you've covered across every course.",
 			},
 		],
 	},
@@ -96,7 +100,7 @@ export function ChangelogSection() {
 							<div key={release.version} className="flex flex-col gap-6">
 								{/* Version Header */}
 								<div className="flex items-center gap-4">
-									<span className="inline-flex rounded-full bg-marketing-accent px-3 py-1 text-sm font-medium text-primary-foreground">
+									<span className="inline-flex rounded-full bg-marketing-accent px-3 py-1 text-sm font-medium text-marketing-accent-fg">
 										v{release.version}
 									</span>
 									<span className="text-sm text-marketing-fg-subtle">

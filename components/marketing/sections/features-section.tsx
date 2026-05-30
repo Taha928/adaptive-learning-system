@@ -1,143 +1,156 @@
 "use client";
 
-import { ArrowRightIcon } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { GradientCard } from "@/components/marketing/primitives/gradient-card";
+import {
+	CalendarCheckIcon,
+	FileStackIcon,
+	LineChartIcon,
+	type LucideIcon,
+	MessageCircleQuestionIcon,
+	SparklesIcon,
+	UsersRoundIcon,
+} from "lucide-react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface Feature {
 	title: string;
 	description: string;
-	link: string;
-	linkText: string;
-	color: "green" | "blue" | "purple" | "brown";
-	placement: "bottom-right" | "bottom-left";
-	image: {
-		light: string;
-		dark: string;
-		width: number;
-		height: number;
-	};
+	icon: LucideIcon;
+	className: string;
+	accent?: boolean;
 }
 
-function FeatureCard({ feature }: { feature: Feature }) {
-	return (
-		<div className="overflow-hidden rounded-lg bg-marketing-card p-2">
-			{/* Screenshot */}
-			<div className="relative overflow-hidden rounded-sm dark:after:absolute dark:after:inset-0 dark:after:rounded-sm dark:after:outline dark:after:outline-1 dark:after:-outline-offset-1 dark:after:outline-white/10 dark:after:content-['']">
-				<GradientCard
-					color={feature.color}
-					placement={feature.placement}
-					rounded="sm"
-				>
-					<Image
-						src={feature.image.light}
-						alt={feature.title}
-						width={feature.image.width}
-						height={feature.image.height}
-						className="dark:hidden"
-					/>
-					<Image
-						src={feature.image.dark}
-						alt={feature.title}
-						width={feature.image.width}
-						height={feature.image.height}
-						className="hidden dark:block"
-					/>
-				</GradientCard>
-			</div>
+const features: Feature[] = [
+	{
+		title: "A tutor that knows your material",
+		description:
+			"Ask anything and get answers grounded in your own uploads — with citations back to the exact slide or page. Powered by Gemini, available any hour of the night before the exam.",
+		icon: SparklesIcon,
+		className: "lg:col-span-2 lg:row-span-2",
+		accent: true,
+	},
+	{
+		title: "Notes in, course out",
+		description:
+			"Drop in PDFs, docs or links. Lumen extracts the text and structures it into topics and bite-size lessons.",
+		icon: FileStackIcon,
+		className: "lg:col-span-2",
+	},
+	{
+		title: "Quizzes that adapt",
+		description:
+			"Auto-generated multiple-choice, true/false and short-answer questions that lean into whatever you keep missing — each graded with feedback.",
+		icon: MessageCircleQuestionIcon,
+		className: "",
+	},
+	{
+		title: "A plan you'll finish",
+		description:
+			"Tell Lumen your goal and exam date. It builds a day-by-day study plan and adjusts as you go.",
+		icon: CalendarCheckIcon,
+		className: "",
+	},
+	{
+		title: "See what's sticking",
+		description:
+			"Mastery scores per topic, time-on-task and quiz trends — so you spend your hours where they count.",
+		icon: LineChartIcon,
+		className: "",
+	},
+	{
+		title: "Study together",
+		description:
+			"Share courses in a workspace, invite classmates, and let instructors track the whole cohort.",
+		icon: UsersRoundIcon,
+		className: "",
+	},
+];
 
-			{/* Content */}
-			<div className="flex flex-col gap-4 p-6 sm:p-10 lg:p-6">
-				<div>
-					<h3 className="text-base font-medium leading-8 text-marketing-fg">
-						{feature.title}
-					</h3>
-					<div className="mt-2 flex flex-col gap-4 text-sm leading-7 text-marketing-fg-muted">
-						<p>{feature.description}</p>
-					</div>
-				</div>
-				<Link
-					href={feature.link}
-					className="group inline-flex items-center gap-2 text-sm font-medium text-marketing-fg"
+function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
+	const Icon = feature.icon;
+	return (
+		<motion.div
+			initial={{ opacity: 0, y: 20 }}
+			whileInView={{ opacity: 1, y: 0 }}
+			viewport={{ once: true, margin: "-60px" }}
+			transition={{
+				duration: 0.55,
+				delay: (index % 3) * 0.08,
+				ease: [0.21, 0.5, 0.18, 1],
+			}}
+			className={cn(
+				"group relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-6 sm:p-7",
+				feature.accent
+					? "border-marketing-border bg-marketing-accent-soft"
+					: "border-marketing-border bg-marketing-card",
+				feature.className,
+			)}
+		>
+			{feature.accent && (
+				<div className="marketing-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(80%_80%_at_80%_0%,black,transparent)]" />
+			)}
+			<span
+				className={cn(
+					"relative flex size-11 items-center justify-center rounded-xl",
+					feature.accent
+						? "bg-marketing-accent text-marketing-accent-fg"
+						: "bg-marketing-bg-elevated text-marketing-accent ring-1 ring-marketing-border",
+				)}
+			>
+				<Icon className="size-5" />
+			</span>
+			<div className="relative flex flex-col gap-2">
+				<h3
+					className={cn(
+						"font-display text-marketing-fg tracking-tight",
+						feature.accent ? "text-2xl sm:text-3xl" : "text-lg",
+					)}
 				>
-					{feature.linkText}
-					<ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-				</Link>
+					{feature.title}
+				</h3>
+				<p
+					className={cn(
+						"text-marketing-fg-muted leading-7",
+						feature.accent ? "text-base max-w-md" : "text-sm",
+					)}
+				>
+					{feature.description}
+				</p>
 			</div>
-		</div>
+		</motion.div>
 	);
 }
 
 export function FeaturesSection() {
-	const features: Feature[] = [
-		{
-			title: "Auth & Organizations",
-			description:
-				"Secure authentication with Better Auth. Built-in support for multi-tenant organizations, member invitations and granular role-based permissions.",
-			link: "#",
-			linkText: "Explore Auth",
-			color: "blue",
-			placement: "bottom-right",
-			image: {
-				light: "/marketing/placeholders/placeholder-light.webp",
-				dark: "/marketing/placeholders/placeholder-dark.webp",
-				width: 600,
-				height: 400,
-			},
-		},
-		{
-			title: "AI & Credits System",
-			description:
-				"Launch AI-powered features instantly. Includes a complete chatbot UI, OpenAI integration and a flexible credit consumption system.",
-			link: "#",
-			linkText: "Review Stack",
-			color: "purple",
-			placement: "bottom-left",
-			image: {
-				light: "/marketing/placeholders/placeholder-light.webp",
-				dark: "/marketing/placeholders/placeholder-dark.webp",
-				width: 600,
-				height: 400,
-			},
-		},
-	];
-
 	return (
-		<section id="features" className="py-16 scroll-mt-14">
-			<div className="mx-auto flex max-w-2xl flex-col gap-10 px-6 md:max-w-3xl lg:max-w-7xl lg:gap-16 lg:px-10">
+		<section id="features" className="scroll-mt-14 py-20 lg:py-28">
+			<div className="mx-auto flex max-w-2xl flex-col gap-12 px-6 md:max-w-3xl lg:max-w-7xl lg:gap-16 lg:px-10">
 				{/* Header */}
-				<div className="flex max-w-2xl flex-col gap-6">
-					<div className="flex flex-col gap-2">
-						<div className="text-sm font-semibold leading-7 text-marketing-fg-muted">
-							Powerful Features
-						</div>
-						<h2
-							className={cn(
-								"text-pretty font-display text-[2rem] leading-10 tracking-tight",
-								"text-marketing-fg",
-								"sm:text-5xl sm:leading-14",
-							)}
-						>
-							The complete SaaS foundation
-						</h2>
+				<div className="flex max-w-2xl flex-col gap-4">
+					<div className="text-sm font-semibold uppercase tracking-widest text-marketing-accent">
+						Everything to learn it once
 					</div>
-					<div className="text-base leading-7 text-marketing-fg-muted text-pretty">
-						<p>
-							Everything you need to build a production-ready application. From
-							authentication to payments, it's all included.
-						</p>
-					</div>
+					<h2
+						className={cn(
+							"text-pretty font-display text-4xl leading-tight tracking-tight text-marketing-fg",
+							"sm:text-5xl",
+						)}
+					>
+						One workspace from <span className="marketing-em">first read</span>{" "}
+						to exam day.
+					</h2>
+					<p className="text-base leading-7 text-marketing-fg-muted text-pretty">
+						No more juggling a PDF reader, a flashcard app and a calendar. Lumen
+						pulls the whole study loop into one place — and the AI does the busy
+						work.
+					</p>
 				</div>
 
-				{/* Features Grid */}
-				<div>
-					<div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-						{features.map((feature) => (
-							<FeatureCard key={feature.title} feature={feature} />
-						))}
-					</div>
+				{/* Bento Grid */}
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					{features.map((feature, index) => (
+						<FeatureCard key={feature.title} feature={feature} index={index} />
+					))}
 				</div>
 			</div>
 		</section>

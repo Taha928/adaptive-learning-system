@@ -15,22 +15,22 @@ const contactFaq = {
 		{
 			question: "How quickly will I get a response?",
 			answer:
-				"We typically respond within 24 hours on business days. For urgent matters, please indicate so in your message.",
+				"We typically respond within 24 hours on weekdays. If you're stuck the night before an exam, mention it — we'll prioritize.",
 		},
 		{
-			question: "Do you offer enterprise plans?",
+			question: "Do you work with schools and bootcamps?",
 			answer:
-				"Yes! We offer custom enterprise plans with dedicated support, custom integrations and volume pricing. Get in touch to discuss your needs.",
+				"Yes. We partner with departments, clubs and bootcamps on shared workspaces and bulk seats. Tell us about your program and we'll find a fit.",
 		},
 		{
-			question: "Can I schedule a demo?",
+			question: "I'm a student and can't afford it — can you help?",
 			answer:
-				"Absolutely. Send us a message requesting a demo and we'll set up a time that works for you.",
+				"Reach out with your student ID. We keep a pool of free and discounted seats for learners who need them.",
 		},
 		{
-			question: "What's the best way to get technical support?",
+			question: "I found a bug or have a feature idea.",
 			answer:
-				"For existing customers, the fastest way is through our in-app support chat. For general inquiries, this contact form works great.",
+				"Please send it our way. A lot of Lumen exists because a learner emailed us at midnight with a better idea.",
 		},
 	],
 };

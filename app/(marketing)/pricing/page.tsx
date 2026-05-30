@@ -7,45 +7,45 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
 	title: "Pricing",
-	description: `Simple, transparent pricing for ${appConfig.appName}. Choose the plan that works best for you.`,
+	description: `Simple, student-friendly pricing for ${appConfig.appName}. Start free and upgrade when exams get real.`,
 };
 
 const pricingFaq = {
 	headline: "Questions & Answers",
 	items: [
 		{
-			question: "Do I need a credit card to start the free trial?",
+			question: "Do I need a credit card to start?",
 			answer:
-				"No credit card required to start your free trial. You can explore all features for 14 days before deciding on a plan.",
+				"No. The Free plan lets you build a course, run quizzes and chat with the tutor right away — no card required. Paid plans include a 14-day free trial.",
 		},
 		{
-			question: "Can my whole team use the same account?",
+			question: "Is there a student discount?",
 			answer:
-				"Yes! All plans support multiple team members. The number of seats varies by plan and you can add more members as your team grows.",
+				"Scholar is already priced for students. If it's still a stretch, email us with your student ID — we keep a pool of free and discounted seats for learners who need them.",
 		},
 		{
-			question: "What payment methods do you accept?",
+			question: "Can my whole class share one workspace?",
 			answer:
-				"We accept all major credit cards (Visa, Mastercard and American Express) and can arrange invoicing for annual plans on our Pro tier.",
+				"Yes. Scholar includes shared class workspaces, so you can invite classmates and let an instructor track the cohort. Seats are billed per member.",
 		},
 		{
-			question: "Can I change plans later?",
+			question: "Can I change or cancel my plan later?",
 			answer:
-				"Absolutely. You can upgrade or downgrade your plan at any time. Changes take effect immediately and we'll prorate your billing accordingly.",
+				"Anytime. Upgrade, downgrade or cancel from your settings. Changes take effect immediately and we prorate the difference.",
 		},
 	],
 };
 
 const ctaContent = {
-	headline: "Have anymore questions?",
+	headline: "Still deciding?",
 	description:
-		"Chat with someone on our sales team who can help you find the right plan for your needs.",
+		"Start on the free plan and build your first course in minutes. Upgrade only when you've got an exam worth winning.",
 	primaryCta: {
-		text: "Chat with us",
-		href: `mailto:${appConfig.contact.email}`,
+		text: "Start free",
+		href: "/auth/sign-up",
 	},
 	secondaryCta: {
-		text: "Book a demo",
+		text: "Talk to us",
 		href: "/contact",
 	},
 };
@@ -58,17 +58,17 @@ export default function PricingPage() {
 				<div className="mx-auto flex max-w-2xl flex-col items-center gap-6 px-6 text-center md:max-w-3xl lg:max-w-7xl lg:px-10">
 					<h1
 						className={cn(
-							"text-balance font-display text-5xl leading-12 tracking-tight",
+							"text-balance font-display text-5xl leading-[1.05] tracking-tight",
 							"text-marketing-fg",
-							"sm:text-[5rem] sm:leading-20",
+							"sm:text-[5rem] sm:leading-[1.02]",
 						)}
 					>
-						Pricing
+						Priced for a <span className="marketing-em">student</span> budget.
 					</h1>
 					<div className="max-w-xl text-lg leading-8 text-marketing-fg-muted">
 						<p>
-							Simple, transparent pricing that scales with your business. Start
-							free and upgrade as you grow.
+							Start free and learn as much as you like. Upgrade to Scholar when
+							you've got a real exam on the calendar.
 						</p>
 					</div>
 				</div>

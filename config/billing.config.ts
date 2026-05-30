@@ -13,13 +13,13 @@ export const billingConfig = {
 		free: {
 			id: "free",
 			name: "Free",
-			description: "Get started with basic features",
+			description: "Everything you need to try a study loop",
 			isFree: true,
 			features: [
-				"Up to 3 team members",
-				"Basic analytics",
-				"Community support",
-				"1 GB storage",
+				"1 active course",
+				"50 tutor messages / month",
+				"AI-generated quizzes",
+				"Basic mastery tracking",
 			],
 			limits: {
 				maxMembers: 3,
@@ -29,16 +29,16 @@ export const billingConfig = {
 		// Pro plan - main paid tier
 		pro: {
 			id: "pro",
-			name: "Pro",
-			description: "For growing teams",
+			name: "Scholar",
+			description: "For students with a real exam to pass",
 			recommended: true,
 			features: [
-				"Unlimited team members",
-				"Advanced analytics",
-				"Priority support",
-				"100 GB storage",
-				"Custom integrations",
-				"API access",
+				"Unlimited courses & materials",
+				"Unlimited tutor messages",
+				"Adaptive quizzes & study plans",
+				"Full mastery analytics",
+				"Priority Gemini models",
+				"Shared class workspaces",
 			],
 			limits: {
 				maxMembers: -1, // unlimited
@@ -95,12 +95,12 @@ export const billingConfig = {
 		lifetime: {
 			id: "lifetime",
 			name: "Lifetime",
-			description: "Pay once, use forever",
+			description: "Pay once, study forever",
 			features: [
-				"All Pro features",
+				"Everything in Scholar",
 				"Lifetime updates",
 				"Priority support for 1 year",
-				"100 GB storage",
+				"Early access to new models",
 			],
 			limits: {
 				maxMembers: -1,

@@ -22,12 +22,12 @@ const PRODUCT_LINKS = [
 	{
 		title: "Features",
 		href: "/#features",
-		description: "Explore all the powerful tools we offer to help you succeed.",
+		description: "Tutor, adaptive quizzes, study plans and mastery analytics.",
 	},
 	{
-		title: "FAQ",
-		href: "/#faq",
-		description: "Find answers to frequently asked questions.",
+		title: "How it works",
+		href: "/#how-it-works",
+		description: "From your notes to exam-ready in three steps.",
 	},
 ];
 
@@ -35,17 +35,17 @@ const RESOURCE_LINKS = [
 	{
 		title: "Blog",
 		href: "/blog",
-		description: "Stay up to date with the latest news and articles.",
+		description: "Learning science and study techniques that work.",
 	},
 	{
 		title: "Documentation",
 		href: "/docs",
-		description: "Learn how to use our platform with detailed guides.",
+		description: "Guides for getting the most out of Lumen.",
 	},
 	{
 		title: "Changelog",
 		href: "/changelog",
-		description: "Discover the latest features and improvements.",
+		description: "The latest features and improvements.",
 	},
 ];
 
@@ -53,12 +53,12 @@ const COMPANY_LINKS = [
 	{
 		title: "About",
 		href: "/about",
-		description: "Learn more about our mission and the team.",
+		description: "Our mission to give every learner a tutor.",
 	},
 	{
 		title: "Careers",
 		href: "/careers",
-		description: "Join us in building the future.",
+		description: "Help us teach the world.",
 	},
 ];
 

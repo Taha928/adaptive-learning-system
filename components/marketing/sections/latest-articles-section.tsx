@@ -22,15 +22,15 @@ export function LatestArticlesSection({ posts }: LatestArticlesSectionProps) {
 					<div className="flex flex-col gap-2">
 						<h2
 							className={cn(
-								"text-pretty font-display text-[2rem] leading-10 tracking-tight",
+								"text-pretty font-display text-4xl leading-tight tracking-tight",
 								"text-marketing-fg",
-								"sm:text-5xl sm:leading-14",
+								"sm:text-5xl",
 							)}
 						>
-							Latest articles
+							From the blog
 						</h2>
 						<p className="text-marketing-fg-muted">
-							Insights, updates and stories from our team.
+							Study smarter — learning science and product updates.
 						</p>
 					</div>
 					<Link

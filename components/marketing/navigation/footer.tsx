@@ -15,8 +15,8 @@ const footerLinks = [
 		group: "Product",
 		items: [
 			{ title: "Features", href: "/#features" },
+			{ title: "How it works", href: "/#how-it-works" },
 			{ title: "Pricing", href: "/pricing" },
-			{ title: "FAQ", href: "/#faq" },
 		],
 	},
 	{

@@ -2,7 +2,17 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import { Fraunces } from "next/font/google";
 import type * as React from "react";
+
+// Distinctive editorial display serif used across the marketing site.
+const fraunces = Fraunces({
+	subsets: ["latin"],
+	variable: "--font-fraunces",
+	display: "swap",
+	style: ["normal", "italic"],
+	axes: ["opsz", "SOFT", "WONK"],
+});
 
 import "./globals.css";
 import "cropperjs/dist/cropper.css";
@@ -63,7 +73,7 @@ export default async function RootLayout({
 
 	return (
 		<html
-			className={`${GeistSans.variable} size-full min-h-screen`}
+			className={`${GeistSans.variable} ${fraunces.variable} size-full min-h-screen`}
 			lang="en"
 			suppressHydrationWarning
 		>

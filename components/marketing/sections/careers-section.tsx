@@ -6,52 +6,52 @@ import { cn } from "@/lib/utils";
 
 const benefits = [
 	{
-		title: "Flexible Work",
+		title: "Learn on the clock",
 		description:
-			"Work from anywhere. We care about results, not where you sit.",
+			"A generous yearly stipend for any course, book or conference. We're a learning company — we mean it.",
 	},
 	{
-		title: "Great Team",
+		title: "Mission you can feel",
 		description:
-			"Work with talented, kind people who care about doing good work.",
+			"Work alongside learning scientists and engineers on a product that genuinely changes how people study.",
 	},
 	{
-		title: "Room to Grow",
+		title: "Remote-first, async",
 		description:
-			"Take on new challenges. Learn new skills. Grow your career with us.",
+			"Work from anywhere across friendly timezones. We optimize for deep work, not meeting calendars.",
 	},
 ];
 
 const positions = [
 	{
-		title: "Software Engineer",
+		title: "Founding ML Engineer",
+		department: "AI",
+		description:
+			"Own the retrieval and quiz-generation pipeline on top of Gemini. Make answers accurate, cited and fast.",
+		type: "Full-time",
+		location: "Remote",
+	},
+	{
+		title: "Learning Scientist",
+		department: "Research",
+		description:
+			"Translate the research on retrieval practice and spaced repetition into the product's adaptive engine.",
+		type: "Full-time",
+		location: "Remote",
+	},
+	{
+		title: "Product Engineer",
 		department: "Engineering",
 		description:
-			"Build features that help thousands of teams work better. Full-stack role.",
+			"Build the study experience end to end in Next.js and tRPC — from upload to quiz to mastery dashboard.",
 		type: "Full-time",
 		location: "Remote",
 	},
 	{
-		title: "Product Designer",
-		department: "Design",
+		title: "Community & Education Lead",
+		department: "Growth",
 		description:
-			"Shape how people experience our product. Research, design and iterate.",
-		type: "Full-time",
-		location: "Remote",
-	},
-	{
-		title: "Customer Support",
-		department: "Support",
-		description:
-			"Help our customers succeed. Solve problems and make people happy.",
-		type: "Full-time",
-		location: "Remote",
-	},
-	{
-		title: "Marketing Manager",
-		department: "Marketing",
-		description:
-			"Tell our story. Help more teams discover what we're building.",
+			"Partner with students, educators and clubs. Turn power users into a movement.",
 		type: "Full-time",
 		location: "Remote",
 	},
@@ -65,17 +65,18 @@ export function CareersBenefitsSection() {
 				<div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 md:max-w-3xl lg:max-w-7xl lg:px-10">
 					<h1
 						className={cn(
-							"text-balance font-display text-5xl leading-12 tracking-tight",
+							"text-balance font-display text-5xl leading-[1.05] tracking-tight",
 							"text-marketing-fg",
-							"sm:text-[5rem] sm:leading-20",
+							"sm:text-[5rem] sm:leading-[1.02]",
 						)}
 					>
-						Join our team
+						Help us teach the world.
 					</h1>
 					<div className="max-w-3xl text-lg leading-8 text-marketing-fg-muted">
 						<p>
-							We're looking for people who want to do meaningful work and have
-							fun doing it. Help us build tools that teams love.
+							We're a small team of engineers and learning scientists building
+							the tutor we wish we'd had in school. If that sounds like your
+							kind of problem, we'd love to meet you.
 						</p>
 					</div>
 				</div>

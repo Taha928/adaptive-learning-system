@@ -13,7 +13,7 @@ import { MarketingProviders } from "./providers";
 export default function MarketingLayout({ children }: { children: ReactNode }) {
 	return (
 		<MarketingProviders>
-			<div className="bg-marketing-bg text-marketing-fg font-display-headings">
+			<div className="marketing-root bg-marketing-bg text-marketing-fg font-display-headings antialiased selection:bg-marketing-accent/20 selection:text-marketing-fg">
 				<Header />
 				<main className="min-h-screen">{children}</main>
 				<Footer />

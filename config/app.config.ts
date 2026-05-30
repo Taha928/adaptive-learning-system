@@ -1,15 +1,16 @@
 import { getBaseUrl } from "@/lib/utils";
 
 export const appConfig = {
-	appName: "Acme",
-	description: `Acme's description`,
+	appName: "Lumen",
+	description:
+		"Lumen turns your own course materials into a personal AI tutor — adaptive lessons, auto-generated quizzes, a study plan that fits your goals, and a tutor that answers anytime.",
 	baseUrl: getBaseUrl(),
 	// Contact information (displayed on contact page)
 	contact: {
 		enabled: true,
-		email: "hello@yourdomain.com",
-		phone: "(123) 456-7890",
-		address: "123 Main St, San Francisco, CA",
+		email: "hello@lumenlearn.app",
+		phone: "(415) 555-0142",
+		address: "Learning Sciences Lab, Berkeley, CA",
 	},
 	// Site sections - enable/disable major parts of the site
 	site: {

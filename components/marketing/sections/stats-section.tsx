@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface Stat {
@@ -11,72 +12,57 @@ interface Stat {
 export function StatsSection() {
 	const stats: Stat[] = [
 		{
-			value: "10K+",
-			label: "Active Users",
-			description: "Growing community worldwide",
+			value: "2.4M+",
+			label: "Questions practiced",
+			description: "Adaptive quiz questions answered by learners.",
 		},
 		{
-			value: "99.9%",
-			label: "Uptime",
-			description: "Reliable infrastructure you can trust",
+			value: "3×",
+			label: "Faster review",
+			description: "Less re-reading, more recall that actually sticks.",
 		},
 		{
-			value: "50+",
-			label: "Integrations",
-			description: "Connect with your favorite tools",
+			value: "94%",
+			label: "Hit their goal",
+			description: "Of learners who finish their plan reach their target.",
 		},
 		{
 			value: "24/7",
-			label: "Support",
-			description: "Help when you need it most",
+			label: "Tutor on call",
+			description: "Answers grounded in your notes, any hour.",
 		},
 	];
 
 	return (
-		<section id="stats" className="py-16">
-			<div className="mx-auto flex max-w-2xl flex-col gap-10 px-6 md:max-w-3xl lg:max-w-7xl lg:gap-16 lg:px-10">
-				{/* Header */}
-				<div className="flex max-w-2xl flex-col gap-6">
-					<div className="flex flex-col gap-2">
-						<div className="text-sm font-semibold leading-7 text-marketing-fg-muted">
-							By the numbers
-						</div>
-						<h2
-							className={cn(
-								"text-pretty font-display text-[2rem] leading-10 tracking-tight",
-								"text-marketing-fg",
-								"sm:text-5xl sm:leading-14",
-							)}
-						>
-							Trusted by teams worldwide
-						</h2>
+		<section id="stats" className="py-20 lg:py-24">
+			<div className="mx-auto max-w-2xl px-6 md:max-w-3xl lg:max-w-7xl lg:px-10">
+				<div className="overflow-hidden rounded-3xl border border-marketing-border bg-marketing-card">
+					<div className="grid grid-cols-2 divide-marketing-border lg:grid-cols-4 lg:divide-x">
+						{stats.map((stat, i) => (
+							<motion.div
+								key={stat.label}
+								initial={{ opacity: 0, y: 16 }}
+								whileInView={{ opacity: 1, y: 0 }}
+								viewport={{ once: true }}
+								transition={{ duration: 0.5, delay: i * 0.08 }}
+								className={cn(
+									"flex flex-col gap-1 p-7 lg:p-9",
+									i < 2 && "border-b border-marketing-border lg:border-b-0",
+									i % 2 === 1 && "border-l border-marketing-border lg:border-l",
+								)}
+							>
+								<div className="font-display text-4xl tracking-tight text-marketing-fg sm:text-5xl">
+									{stat.value}
+								</div>
+								<div className="mt-2 text-sm font-semibold text-marketing-fg">
+									{stat.label}
+								</div>
+								<p className="text-sm leading-6 text-marketing-fg-muted">
+									{stat.description}
+								</p>
+							</motion.div>
+						))}
 					</div>
-					<div className="text-base leading-7 text-marketing-fg-muted text-pretty">
-						<p>
-							Join thousands of companies that rely on our platform to power
-							their business every day.
-						</p>
-					</div>
-				</div>
-
-				{/* Stats Grid */}
-				<div className="grid grid-cols-2 gap-6 lg:grid-cols-4 lg:gap-8">
-					{stats.map((stat) => (
-						<div
-							key={stat.label}
-							className="relative rounded-lg bg-marketing-card p-6"
-						>
-							<div className="text-3xl font-semibold tracking-tight text-marketing-fg sm:text-4xl">
-								{stat.value}
-							</div>
-							<div className="mt-2 text-sm font-medium text-marketing-fg">
-								{stat.label}
-							</div>
-							<p className="mt-1 text-sm text-marketing-fg-muted">
-								{stat.description}
-							</p>
-						</div>
-					))}
 				</div>
 			</div>
 		</section>

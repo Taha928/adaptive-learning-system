@@ -1,82 +1,53 @@
 "use client";
 
-import Image from "next/image";
 import { InfiniteSlider } from "@/components/marketing/primitives/infinite-slider";
 import { ProgressiveBlur } from "@/components/marketing/primitives/progressive-blur";
 
-const logos = [
-	{
-		src: "/marketing/logos/nvidia.svg",
-		alt: "Nvidia Logo",
-		height: "h-5",
-	},
-	{
-		src: "/marketing/logos/column.svg",
-		alt: "Column Logo",
-		height: "h-4",
-	},
-	{
-		src: "/marketing/logos/github.svg",
-		alt: "GitHub Logo",
-		height: "h-4",
-	},
-	{
-		src: "/marketing/logos/nike.svg",
-		alt: "Nike Logo",
-		height: "h-5",
-	},
-	{
-		src: "/marketing/logos/lemonsqueezy.svg",
-		alt: "Lemon Squeezy Logo",
-		height: "h-5",
-	},
-	{
-		src: "/marketing/logos/laravel.svg",
-		alt: "Laravel Logo",
-		height: "h-4",
-	},
-	{
-		src: "/marketing/logos/lilly.svg",
-		alt: "Lilly Logo",
-		height: "h-7",
-	},
-	{
-		src: "/marketing/logos/openai.svg",
-		alt: "OpenAI Logo",
-		height: "h-6",
-	},
+const subjects = [
+	"Organic Chemistry",
+	"Calculus",
+	"Anatomy & Physiology",
+	"Machine Learning",
+	"Constitutional Law",
+	"Macroeconomics",
+	"Data Structures",
+	"Microbiology",
+	"Statistics",
+	"World History",
+	"Pharmacology",
+	"Linear Algebra",
 ];
 
 export function LogoCloudSection() {
 	return (
-		<section className="overflow-hidden border-border/50 border-t">
-			<div className="group relative mx-auto max-w-screen-2xl px-4 sm:px-6 md:px-12">
-				<div className="relative w-full py-6">
-					<InfiniteSlider speedOnHover={20} speed={40} gap={112}>
-						{logos.map((logo) => (
-							<div key={logo.alt} className="flex">
-								<Image
-									className={`mx-auto ${logo.height} w-fit dark:invert`}
-									src={logo.src}
-									alt={logo.alt}
-									height={20}
-									width={100}
-								/>
-							</div>
-						))}
-					</InfiniteSlider>
+		<section className="border-t border-marketing-border/60 py-10">
+			<div className="mx-auto max-w-7xl px-6 lg:px-10">
+				<p className="mb-8 text-center text-sm font-medium uppercase tracking-widest text-marketing-fg-subtle">
+					Learners are mastering everything from
+				</p>
+			</div>
+			<div className="group relative mx-auto max-w-screen-2xl overflow-hidden px-4 sm:px-6 md:px-12">
+				<InfiniteSlider speedOnHover={20} speed={40} gap={56}>
+					{subjects.map((subject) => (
+						<span
+							key={subject}
+							className="whitespace-nowrap font-display text-xl text-marketing-fg-muted sm:text-2xl"
+						>
+							{subject}
+						</span>
+					))}
+				</InfiniteSlider>
 
-					<ProgressiveBlur
-						className="pointer-events-none absolute inset-y-0 left-0 h-full w-20"
-						direction="left"
-						blurIntensity={1}
-					/>
-					<ProgressiveBlur
-						className="pointer-events-none absolute inset-y-0 right-0 h-full w-20"
-						direction="right"
-						blurIntensity={1}
-					/>
-				</div>
+				<ProgressiveBlur
+					className="pointer-events-none absolute inset-y-0 left-0 h-full w-24"
+					direction="left"
+					blurIntensity={1}
+				/>
+				<ProgressiveBlur
+					className="pointer-events-none absolute inset-y-0 right-0 h-full w-24"
+					direction="right"
+					blurIntensity={1}
+				/>
 			</div>
 		</section>
 	);

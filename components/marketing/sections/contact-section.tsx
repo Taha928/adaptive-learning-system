@@ -90,17 +90,17 @@ export function ContactSection() {
 				<div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 md:max-w-3xl lg:max-w-7xl lg:px-10">
 					<h1
 						className={cn(
-							"text-balance font-display text-5xl leading-12 tracking-tight",
+							"text-balance font-display text-5xl leading-[1.05] tracking-tight",
 							"text-marketing-fg",
-							"sm:text-[5rem] sm:leading-20",
+							"sm:text-[5rem] sm:leading-[1.02]",
 						)}
 					>
 						Get in touch
 					</h1>
 					<div className="max-w-3xl text-lg leading-8 text-marketing-fg-muted">
 						<p>
-							Questions about pricing, features or enterprise plans? Our team is
-							ready to help.
+							A question about Lumen, a partnership for your school, or feedback
+							from a late-night study session? We read every message.
 						</p>
 					</div>
 				</div>

@@ -2,6 +2,7 @@ import { CtaSection } from "@/components/marketing/sections/cta-section";
 import { FaqSection } from "@/components/marketing/sections/faq-section";
 import { FeaturesSection } from "@/components/marketing/sections/features-section";
 import { HeroSection } from "@/components/marketing/sections/hero-section";
+import { HowItWorksSection } from "@/components/marketing/sections/how-it-works-section";
 import { LatestArticlesSection } from "@/components/marketing/sections/latest-articles-section";
 import { LogoCloudSection } from "@/components/marketing/sections/logo-cloud-section";
 import { PricingSection } from "@/components/marketing/sections/pricing-section";
@@ -67,46 +68,47 @@ export default async function HomePage() {
 	const posts = await getAllPosts();
 
 	const faqContent = {
-		headline: "Questions & Answers",
+		headline: "Questions, answered",
 		items: [
 			{
-				question: "How do I get started?",
+				question: "What can I upload?",
 				answer:
-					"Getting started is simple. Sign up for a free account, complete the onboarding process and you'll be ready to go in minutes.",
+					"PDFs, Word docs, plain text notes and web links. Lumen extracts the text, structures it into topics, and uses it as the source of truth for lessons, quizzes and the tutor's answers.",
 			},
 			{
-				question: "Is there a free trial available?",
+				question: "Where do the quizzes and answers come from?",
 				answer:
-					"Yes, we offer a 14-day free trial with full access to all features. No credit card required to start.",
+					"From your own material. Lumen uses Google's Gemini models to generate questions and tutor replies grounded in what you uploaded — and points back to the exact slide or page so you can verify it.",
 			},
 			{
-				question: "Can I cancel my subscription anytime?",
+				question: "Do I need a credit card to start?",
 				answer:
-					"Absolutely. You can cancel your subscription at any time from your account settings. No questions asked.",
+					"No. The free plan lets you create a course, run quizzes and chat with the tutor right away. Upgrade only when you want more courses and unlimited tutor messages.",
 			},
 			{
-				question: "Do you offer customer support?",
+				question: "Can my class or study group use it together?",
 				answer:
-					"We provide dedicated customer support via email and live chat. Our team typically responds within a few hours.",
+					"Yes. Create a shared workspace, invite classmates, and instructors can track how the whole cohort is progressing topic by topic.",
 			},
 			{
-				question: "Is my data secure?",
+				question: "Is my coursework private?",
 				answer:
-					"Security is our top priority. We use industry-standard encryption and follow best practices to keep your data safe.",
+					"Your uploads stay scoped to your workspace and are never used to train models. We use industry-standard encryption in transit and at rest.",
 			},
 		],
 	};
 
 	const ctaContent = {
-		headline: "Ready to get started?",
-		description: "Create your free account today. No credit card required.",
+		headline: "Start the night-before-the-exam differently.",
+		description:
+			"Upload your first set of notes and watch them turn into a tutor, a quiz set and a plan in minutes. Free to start, no card required.",
 		primaryCta: {
-			text: "Start Free Trial",
+			text: "Start learning free",
 			href: "/auth/sign-up",
 		},
 		secondaryCta: {
-			text: "Contact Sales",
-			href: "/contact",
+			text: "See how it works",
+			href: "/#how-it-works",
 		},
 	};
 
@@ -117,10 +119,11 @@ export default async function HomePage() {
 			<HeroSection />
 			<LogoCloudSection />
 			<FeaturesSection />
+			<HowItWorksSection />
 			<StatsSection />
 			<TestimonialsSection />
+			<PricingSection headline="Pricing that fits a student budget." />
 			<FaqSection content={faqContent} />
-			<PricingSection />
 			<LatestArticlesSection posts={posts} />
 			<CtaSection content={ctaContent} />
 		</>
