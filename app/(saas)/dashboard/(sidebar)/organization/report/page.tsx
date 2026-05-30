@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type * as React from "react";
-import { OrganizationOverview } from "@/components/organization/organization-overview";
+import { ProgressReport } from "@/components/organization/progress-report";
 import {
 	Page,
 	PageBody,
@@ -13,10 +13,10 @@ import {
 import { getOrganizationById, getSession } from "@/lib/auth/server";
 
 export const metadata: Metadata = {
-	title: "Home",
+	title: "Progress Report",
 };
 
-export default async function OrganizationHomePage(): Promise<React.JSX.Element> {
+export default async function ProgressReportPage(): Promise<React.JSX.Element> {
 	const session = await getSession();
 	if (!session?.session.activeOrganizationId) {
 		redirect("/dashboard");
@@ -36,14 +36,15 @@ export default async function OrganizationHomePage(): Promise<React.JSX.Element>
 					<PageBreadcrumb
 						segments={[
 							{ label: "Home", href: "/dashboard" },
-							{ label: organization.name },
+							{ label: organization.name, href: "/dashboard/organization" },
+							{ label: "Progress Report" },
 						]}
 					/>
 				</PagePrimaryBar>
 			</PageHeader>
 			<PageBody>
-				<PageContent title={`Welcome to ${organization.name}`}>
-					<OrganizationOverview />
+				<PageContent title="Progress Report">
+					<ProgressReport organizationName={organization.name} />
 				</PageContent>
 			</PageBody>
 		</Page>

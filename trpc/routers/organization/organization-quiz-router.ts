@@ -20,7 +20,9 @@ import {
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import {
+	attemptIdSchema,
 	generateFromTopicSchema,
+	listMyAttemptsSchema,
 	listQuizzesSchema,
 	quizIdSchema,
 	startAttemptSchema,
@@ -38,20 +40,28 @@ function assertCanManage(role: string) {
 	}
 }
 
-/** Schema the LLM must satisfy when generating multiple-choice questions. */
+/** Schema the LLM must satisfy when generating quiz questions (mixed types). */
 const aiQuizSchema = z.object({
 	title: z.string(),
 	questions: z
 		.array(
 			z.object({
 				prompt: z.string(),
-				options: z.array(z.string()).min(2).max(6),
+				type: z.enum(["multipleChoice", "trueFalse", "shortAnswer"]),
+				// MCQ: 3-4 options; trueFalse: ["True","False"]; shortAnswer: [].
+				options: z.array(z.string()).max(6).default([]),
 				correctAnswer: z.string(),
 				explanation: z.string(),
 			}),
 		)
 		.min(1),
 });
+
+const AI_TYPE_TO_DB: Record<string, QuestionType> = {
+	multipleChoice: QuestionType.multipleChoice,
+	trueFalse: QuestionType.trueFalse,
+	shortAnswer: QuestionType.shortAnswer,
+};
 
 type TopicForGeneration = {
 	id: string;
@@ -88,9 +98,13 @@ async function generateQuizForTopic(params: {
 	// Keep the prompt bounded so we never blow past model context limits.
 	const sourceText = sourceParts.join("\n\n").slice(0, 12000);
 
-	const prompt = `Create a ${difficulty} difficulty multiple-choice quiz with exactly ${numQuestions} questions for the topic "${topic.title}".
+	const prompt = `Create a ${difficulty} difficulty quiz with exactly ${numQuestions} questions for the topic "${topic.title}".
 
-Use ONLY the study material below as the source of truth. Each question must have between 3 and 4 options, exactly one of which is correct. The "correctAnswer" field MUST be the exact text of one of the provided options. Provide a short explanation for each answer.
+Use ONLY the study material below as the source of truth. Mix the question types:
+- Most should be "multipleChoice" with 3-4 options.
+- Include 1-2 "trueFalse" questions whose options are exactly ["True","False"].
+- Include 1 "shortAnswer" question with an empty options array and a short (1-3 word) correctAnswer.
+For multipleChoice and trueFalse, the "correctAnswer" MUST exactly match one of the provided options. Provide a short explanation for each answer.
 
 Study material:
 ${sourceText || "(No additional material provided. Generate questions based on the topic title.)"}`;
@@ -119,8 +133,11 @@ ${sourceText || "(No additional material provided. Generate questions based on t
 				create: object.questions.map((q, index) => ({
 					organizationId,
 					prompt: q.prompt,
-					type: QuestionType.multipleChoice,
-					options: q.options as Prisma.InputJsonValue,
+					type: AI_TYPE_TO_DB[q.type] ?? QuestionType.multipleChoice,
+					options:
+						q.type === "shortAnswer" || q.options.length === 0
+							? undefined
+							: (q.options as Prisma.InputJsonValue),
 					correctAnswer: q.correctAnswer,
 					explanation: q.explanation,
 					points: 1,
@@ -170,6 +187,11 @@ export const organizationQuizRouter = createTRPCRouter({
 			if (input.courseId) {
 				where.courseId = input.courseId;
 			}
+			// Hide auto-generated adaptive quizzes (createdById null) by default so
+			// the list stays focused on instructor-authored quizzes.
+			if (!input.includeAdaptive) {
+				where.createdById = { not: null };
+			}
 
 			const quizzes = await prisma.quiz.findMany({
 				where,
@@ -178,6 +200,13 @@ export const organizationQuizRouter = createTRPCRouter({
 					course: { select: { id: true, title: true } },
 					topic: { select: { id: true, title: true } },
 					_count: { select: { questions: true, attempts: true } },
+					// The current user's best graded attempt, to show status inline.
+					attempts: {
+						where: { userId: ctx.user.id, status: AttemptStatus.graded },
+						orderBy: { percentage: "desc" },
+						take: 1,
+						select: { id: true, percentage: true, passed: true },
+					},
 				},
 			});
 
@@ -201,8 +230,10 @@ export const organizationQuizRouter = createTRPCRouter({
 				select: {
 					id: true,
 					title: true,
+					summary: true,
 					courseId: true,
 					course: { select: { id: true, title: true } },
+					_count: { select: { quizzes: true } },
 				},
 			});
 
@@ -270,6 +301,131 @@ export const organizationQuizRouter = createTRPCRouter({
 			return quiz;
 		}),
 
+	// List the current user's graded attempts (their quiz history).
+	listMyAttempts: protectedOrganizationProcedure
+		.input(listMyAttemptsSchema)
+		.query(async ({ ctx, input }) => {
+			const where: Prisma.QuizAttemptWhereInput = {
+				organizationId: ctx.organization.id,
+				userId: ctx.user.id,
+				status: AttemptStatus.graded,
+			};
+			if (input.courseId) {
+				where.courseId = input.courseId;
+			}
+
+			const attempts = await prisma.quizAttempt.findMany({
+				where,
+				orderBy: { submittedAt: "desc" },
+				select: {
+					id: true,
+					score: true,
+					maxScore: true,
+					percentage: true,
+					passed: true,
+					submittedAt: true,
+					quiz: {
+						select: {
+							id: true,
+							title: true,
+							difficulty: true,
+							course: { select: { id: true, title: true } },
+							topic: { select: { id: true, title: true } },
+						},
+					},
+				},
+			});
+
+			return { attempts };
+		}),
+
+	// Re-open a single graded attempt with its full per-question review.
+	getAttemptResult: protectedOrganizationProcedure
+		.input(attemptIdSchema)
+		.query(async ({ ctx, input }) => {
+			const attempt = await prisma.quizAttempt.findFirst({
+				where: {
+					id: input.attemptId,
+					organizationId: ctx.organization.id,
+					userId: ctx.user.id,
+				},
+				select: {
+					id: true,
+					score: true,
+					maxScore: true,
+					percentage: true,
+					passed: true,
+					submittedAt: true,
+					quiz: {
+						select: {
+							id: true,
+							title: true,
+							difficulty: true,
+							questions: {
+								orderBy: { orderIndex: "asc" },
+								select: {
+									id: true,
+									prompt: true,
+									options: true,
+									correctAnswer: true,
+									explanation: true,
+								},
+							},
+						},
+					},
+					answers: {
+						select: {
+							questionId: true,
+							selectedOption: true,
+							responseText: true,
+							isCorrect: true,
+						},
+					},
+				},
+			});
+
+			if (!attempt) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Attempt not found",
+				});
+			}
+
+			const answerByQuestion = new Map(
+				attempt.answers.map((a) => [a.questionId, a]),
+			);
+
+			const results = attempt.quiz.questions.map((q) => {
+				const a = answerByQuestion.get(q.id);
+				return {
+					questionId: q.id,
+					prompt: q.prompt,
+					options: Array.isArray(q.options)
+						? (q.options as unknown[]).filter(
+								(o): o is string => typeof o === "string",
+							)
+						: [],
+					yourAnswer: a?.selectedOption ?? a?.responseText ?? null,
+					correctAnswer: q.correctAnswer,
+					explanation: q.explanation,
+					isCorrect: a?.isCorrect ?? false,
+				};
+			});
+
+			return {
+				id: attempt.id,
+				quizId: attempt.quiz.id,
+				title: attempt.quiz.title,
+				difficulty: attempt.quiz.difficulty,
+				score: attempt.score,
+				maxScore: attempt.maxScore,
+				percentage: attempt.percentage ?? 0,
+				passed: attempt.passed,
+				submittedAt: attempt.submittedAt,
+				results,
+			};
+		}),
+
 	// INSTRUCTOR ONLY: generate an AI quiz from a topic's material.
 	generateFromTopic: protectedOrganizationProcedure
 		.input(generateFromTopicSchema)
@@ -286,16 +442,17 @@ export const organizationQuizRouter = createTRPCRouter({
 				(input.difficulty as Difficulty | undefined) ?? "medium";
 
 			try {
-				const quizId = await prisma.$transaction((tx) =>
-					generateQuizForTopic({
-						tx,
-						organizationId: ctx.organization.id,
-						createdById: ctx.user.id,
-						topic,
-						numQuestions: input.numQuestions,
-						difficulty,
-					}),
-				);
+				// No $transaction: the slow LLM call must not run inside one (5s
+				// interactive-tx timeout). The nested quiz+questions create is
+				// atomic on its own.
+				const quizId = await generateQuizForTopic({
+					tx: prisma,
+					organizationId: ctx.organization.id,
+					createdById: ctx.user.id,
+					topic,
+					numQuestions: input.numQuestions,
+					difficulty,
+				});
 
 				return { quizId };
 			} catch (error) {
@@ -400,9 +557,13 @@ export const organizationQuizRouter = createTRPCRouter({
 							topicId: true,
 							passingScore: true,
 							questions: {
+								orderBy: { orderIndex: "asc" },
 								select: {
 									id: true,
 									type: true,
+									prompt: true,
+									options: true,
+									explanation: true,
 									correctAnswer: true,
 									points: true,
 								},
@@ -431,6 +592,18 @@ export const organizationQuizRouter = createTRPCRouter({
 				input.answers.map((a) => [a.questionId, a]),
 			);
 
+			// Per-question review detail, returned after grading (safe to reveal
+			// correct answers + explanations once the attempt is submitted).
+			const reviewResults: {
+				questionId: string;
+				prompt: string;
+				options: string[];
+				yourAnswer: string | null;
+				correctAnswer: string;
+				explanation: string | null;
+				isCorrect: boolean;
+			}[] = [];
+
 			// Grade in a transaction: write Answer[], update attempt, log mastery.
 			const graded = await prisma.$transaction(async (tx) => {
 				let score = 0;
@@ -454,6 +627,20 @@ export const organizationQuizRouter = createTRPCRouter({
 
 					const pointsAwarded = isCorrect ? question.points : 0;
 					score += pointsAwarded;
+
+					reviewResults.push({
+						questionId: question.id,
+						prompt: question.prompt,
+						options: Array.isArray(question.options)
+							? (question.options as unknown[]).filter(
+									(o): o is string => typeof o === "string",
+								)
+							: [],
+						yourAnswer: candidate,
+						correctAnswer: question.correctAnswer,
+						explanation: question.explanation,
+						isCorrect,
+					});
 
 					await tx.answer.upsert({
 						where: {
@@ -575,16 +762,14 @@ export const organizationQuizRouter = createTRPCRouter({
 						graded.topicId,
 						ctx.organization.id,
 					);
-					nextQuizId = await prisma.$transaction((tx) =>
-						generateQuizForTopic({
-							tx,
-							organizationId: ctx.organization.id,
-							createdById: null,
-							topic,
-							numQuestions: 5,
-							difficulty: graded.difficulty,
-						}),
-					);
+					nextQuizId = await generateQuizForTopic({
+						tx: prisma,
+						organizationId: ctx.organization.id,
+						createdById: null,
+						topic,
+						numQuestions: 5,
+						difficulty: graded.difficulty,
+					});
 				} catch (error) {
 					logger.error(
 						{
@@ -606,6 +791,7 @@ export const organizationQuizRouter = createTRPCRouter({
 				difficulty: graded.difficulty,
 				difficultyChanged: graded.difficultyChanged,
 				nextQuizId,
+				results: reviewResults,
 			};
 		}),
 });

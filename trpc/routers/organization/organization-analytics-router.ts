@@ -224,4 +224,72 @@ export const organizationAnalyticsRouter = createTRPCRouter({
 			throw error;
 		}
 	}),
+
+	/**
+	 * Mastery over time — each recorded masteryScore from quiz completions,
+	 * chronologically. Visualises that the adaptive loop is actually improving
+	 * the learner (evaluation evidence). Members see their own; instructors the
+	 * org-wide series.
+	 */
+	getMasteryTimeline: protectedOrganizationProcedure.query(async ({ ctx }) => {
+		const organizationId = ctx.organization.id;
+		const instructor = isInstructor(ctx.membership.role);
+
+		const logs = await prisma.performanceLog.findMany({
+			where: {
+				organizationId,
+				eventType: "quizCompleted",
+				masteryScore: { not: null },
+				...(instructor ? {} : { userId: ctx.user.id }),
+			},
+			select: { occurredAt: true, masteryScore: true },
+			orderBy: { occurredAt: "desc" },
+			take: 50,
+		});
+
+		return logs.reverse().map((log, index) => ({
+			index: index + 1,
+			date: log.occurredAt.toISOString(),
+			mastery: Number(((log.masteryScore ?? 0) * 100).toFixed(1)),
+		}));
+	}),
+
+	/**
+	 * AI quiz-quality metric: the share of generated objective questions whose
+	 * correctAnswer is actually one of the provided options. A concrete,
+	 * quotable evaluation number for the generation pipeline.
+	 */
+	getQuizQuality: protectedOrganizationProcedure.query(async ({ ctx }) => {
+		const organizationId = ctx.organization.id;
+
+		const questions = await prisma.question.findMany({
+			where: { organizationId, quiz: { isAiGenerated: true } },
+			select: { type: true, options: true, correctAnswer: true },
+		});
+
+		let objective = 0;
+		let valid = 0;
+		for (const q of questions) {
+			// Short-answer has no options to validate against.
+			if (q.type === "shortAnswer") continue;
+			objective += 1;
+			const options = Array.isArray(q.options)
+				? (q.options as unknown[]).filter(
+						(o): o is string => typeof o === "string",
+					)
+				: [];
+			const ok = options.some(
+				(o) => o.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase(),
+			);
+			if (ok) valid += 1;
+		}
+
+		return {
+			totalQuestions: questions.length,
+			objectiveQuestions: objective,
+			validQuestions: valid,
+			validPercentage:
+				objective > 0 ? Number(((valid / objective) * 100).toFixed(1)) : null,
+		};
+	}),
 });

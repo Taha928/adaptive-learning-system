@@ -4,6 +4,10 @@ import { ArrowRightIcon, SparklesIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	type QuizReviewItem,
+	QuizReviewItems,
+} from "@/components/organization/quiz-review-items";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +18,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
@@ -36,6 +41,7 @@ type SubmitResult = {
 	difficulty: Difficulty;
 	difficultyChanged: boolean;
 	nextQuizId: string | null;
+	results: QuizReviewItem[];
 };
 
 function toOptions(options: unknown): string[] {
@@ -68,6 +74,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				difficulty: data.difficulty as Difficulty,
 				difficultyChanged: data.difficultyChanged,
 				nextQuizId: data.nextQuizId,
+				results: data.results,
 			});
 		},
 		onError: (error) => toast.error(error.message || "Could not submit quiz"),
@@ -88,10 +95,12 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 		if (!attemptId) return;
 		submitMutation.mutate({
 			attemptId,
-			answers: questions.map((q) => ({
-				questionId: q.id,
-				selectedOption: responses[q.id] ?? undefined,
-			})),
+			answers: questions.map((q) => {
+				const value = responses[q.id]?.trim() || undefined;
+				return q.type === "shortAnswer"
+					? { questionId: q.id, responseText: value }
+					: { questionId: q.id, selectedOption: value };
+			}),
 		});
 	};
 
@@ -166,24 +175,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 
 				<div className="space-y-3">
 					<h3 className="font-medium">Review</h3>
-					{questions.map((q, index) => {
-						const chosen = responses[q.id];
-						return (
-							<Card key={q.id}>
-								<CardHeader>
-									<CardTitle className="text-base">
-										{index + 1}. {q.prompt}
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-2">
-									<p className="text-sm">
-										<span className="text-muted-foreground">Your answer: </span>
-										{chosen ? chosen : "—"}
-									</p>
-								</CardContent>
-							</Card>
-						);
-					})}
+					<QuizReviewItems results={result.results} />
 				</div>
 			</div>
 		);
@@ -240,26 +232,39 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 									</CardTitle>
 								</CardHeader>
 								<CardContent>
-									<RadioGroup
-										value={responses[q.id] ?? ""}
-										onValueChange={(value) =>
-											setResponses((prev) => ({ ...prev, [q.id]: value }))
-										}
-									>
-										{options.map((option, optIndex) => {
-											const id = `${q.id}-${optIndex}`;
-											return (
-												<label
-													key={id}
-													htmlFor={id}
-													className="flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm transition-colors hover:bg-accent"
-												>
-													<RadioGroupItem value={option} id={id} />
-													<span>{option}</span>
-												</label>
-											);
-										})}
-									</RadioGroup>
+									{q.type === "shortAnswer" || options.length === 0 ? (
+										<Input
+											placeholder="Type your answer…"
+											value={responses[q.id] ?? ""}
+											onChange={(e) =>
+												setResponses((prev) => ({
+													...prev,
+													[q.id]: e.target.value,
+												}))
+											}
+										/>
+									) : (
+										<RadioGroup
+											value={responses[q.id] ?? ""}
+											onValueChange={(value) =>
+												setResponses((prev) => ({ ...prev, [q.id]: value }))
+											}
+										>
+											{options.map((option, optIndex) => {
+												const id = `${q.id}-${optIndex}`;
+												return (
+													<label
+														key={id}
+														htmlFor={id}
+														className="flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm transition-colors hover:bg-accent"
+													>
+														<RadioGroupItem value={option} id={id} />
+														<span>{option}</span>
+													</label>
+												);
+											})}
+										</RadioGroup>
+									)}
 								</CardContent>
 							</Card>
 						);

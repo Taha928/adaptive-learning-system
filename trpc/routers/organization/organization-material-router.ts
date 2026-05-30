@@ -251,7 +251,11 @@ ${sourceText}`,
 				return { success: true, topicsCreated: created };
 			} catch (error) {
 				logger.error(
-					{ error, materialId: material.id, organizationId: ctx.organization.id },
+					{
+						error,
+						materialId: material.id,
+						organizationId: ctx.organization.id,
+					},
 					"Failed to segment material into topics",
 				);
 				throw new TRPCError({

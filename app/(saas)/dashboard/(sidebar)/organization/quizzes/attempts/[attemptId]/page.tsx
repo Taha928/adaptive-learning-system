@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type * as React from "react";
-import { OrganizationOverview } from "@/components/organization/organization-overview";
+import { QuizResultView } from "@/components/organization/quiz-result-view";
 import {
 	Page,
 	PageBody,
@@ -13,10 +13,18 @@ import {
 import { getOrganizationById, getSession } from "@/lib/auth/server";
 
 export const metadata: Metadata = {
-	title: "Home",
+	title: "Attempt Result",
 };
 
-export default async function OrganizationHomePage(): Promise<React.JSX.Element> {
+export type AttemptResultPageProps = {
+	params: Promise<{ attemptId: string }>;
+};
+
+export default async function AttemptResultPage({
+	params,
+}: AttemptResultPageProps): Promise<React.JSX.Element> {
+	const { attemptId } = await params;
+
 	const session = await getSession();
 	if (!session?.session.activeOrganizationId) {
 		redirect("/dashboard");
@@ -36,14 +44,20 @@ export default async function OrganizationHomePage(): Promise<React.JSX.Element>
 					<PageBreadcrumb
 						segments={[
 							{ label: "Home", href: "/dashboard" },
-							{ label: organization.name },
+							{ label: organization.name, href: "/dashboard/organization" },
+							{ label: "Quizzes", href: "/dashboard/organization/quizzes" },
+							{
+								label: "My Attempts",
+								href: "/dashboard/organization/quizzes/attempts",
+							},
+							{ label: "Result" },
 						]}
 					/>
 				</PagePrimaryBar>
 			</PageHeader>
 			<PageBody>
-				<PageContent title={`Welcome to ${organization.name}`}>
-					<OrganizationOverview />
+				<PageContent title="Attempt Result">
+					<QuizResultView attemptId={attemptId} />
 				</PageContent>
 			</PageBody>
 		</Page>

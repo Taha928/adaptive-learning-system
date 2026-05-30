@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 import { MaterialsModal } from "@/components/organization/materials-modal";
+import { QuizzesTable } from "@/components/organization/quizzes-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
@@ -26,6 +27,10 @@ export function CourseDetail({ courseId }: { courseId: string }) {
 
 	const { data: materialsData, isPending: materialsLoading } =
 		trpc.organization.material.list.useQuery({ courseId });
+
+	const { data: topicsData } = trpc.organization.quiz.listTopics.useQuery({
+		courseId,
+	});
 
 	const deleteMaterial = trpc.organization.material.delete.useMutation({
 		onSuccess: () => {
@@ -42,6 +47,7 @@ export function CourseDetail({ courseId }: { courseId: string }) {
 				`Created ${result.topicsCreated} topic(s). You can now generate quizzes.`,
 			);
 			utils.organization.material.list.invalidate();
+			utils.organization.quiz.listTopics.invalidate();
 		},
 		onError: (error) =>
 			toast.error(error.message || "Failed to generate topics"),
@@ -159,6 +165,40 @@ export function CourseDetail({ courseId }: { courseId: string }) {
 						))}
 					</ul>
 				)}
+			</section>
+
+			<section className="space-y-3">
+				<h3 className="font-medium">Topics</h3>
+				{(topicsData?.topics ?? []).length === 0 ? (
+					<div className="rounded-lg border border-dashed px-4 py-8 text-center text-muted-foreground text-sm">
+						No topics yet. Use “Generate Topics” on a material above to create
+						them.
+					</div>
+				) : (
+					<ul className="grid gap-2 sm:grid-cols-2">
+						{(topicsData?.topics ?? []).map((t) => (
+							<li key={t.id} className="rounded-lg border p-3">
+								<div className="flex items-center justify-between gap-2">
+									<p className="font-medium text-sm">{t.title}</p>
+									<Badge variant="outline" className="shrink-0">
+										{t._count.quizzes} quiz
+										{t._count.quizzes === 1 ? "" : "zes"}
+									</Badge>
+								</div>
+								{t.summary && (
+									<p className="mt-1 text-muted-foreground text-xs">
+										{t.summary}
+									</p>
+								)}
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
+
+			<section className="space-y-3">
+				<h3 className="font-medium">Quizzes</h3>
+				<QuizzesTable courseId={courseId} />
 			</section>
 		</div>
 	);

@@ -95,11 +95,64 @@ describe.runIf(process.env.SEED_DB === "true")("seed default user", () => {
 			create: { organizationId: organization.id, balance: 1000 },
 		});
 
+		// 6. A second, student (member) account in the same org — for demoing
+		// the instructor-vs-student split.
+		const studentEmail = "student@tutor.test";
+		const student = await prisma.user.upsert({
+			where: { email: studentEmail },
+			update: { emailVerified: true, onboardingComplete: true },
+			create: {
+				email: studentEmail,
+				name: "Demo Student",
+				username: "demostudent",
+				emailVerified: true,
+				onboardingComplete: true,
+				role: UserRole.user,
+			},
+		});
+
+		const studentCredential = await prisma.account.findFirst({
+			where: { providerId: "credential", userId: student.id },
+			select: { id: true },
+		});
+		if (studentCredential) {
+			await prisma.account.update({
+				where: { id: studentCredential.id },
+				data: { password: hashedPassword },
+			});
+		} else {
+			await prisma.account.create({
+				data: {
+					providerId: "credential",
+					accountId: student.id,
+					userId: student.id,
+					password: hashedPassword,
+				},
+			});
+		}
+
+		await prisma.member.upsert({
+			where: {
+				userId_organizationId: {
+					userId: student.id,
+					organizationId: organization.id,
+				},
+			},
+			update: { role: MemberRole.member },
+			create: {
+				userId: student.id,
+				organizationId: organization.id,
+				role: MemberRole.member,
+			},
+		});
+
 		expect(user.emailVerified).toBe(true);
 
 		// biome-ignore lint/suspicious/noConsole: seed script needs to print credentials
 		console.log(
-			`\n✅ Seeded login:\n   email:    ${EMAIL}\n   password: ${PASSWORD}\n   org:      ${ORG_NAME}\n`,
+			`\n✅ Seeded logins (org: ${ORG_NAME})\n` +
+				`   INSTRUCTOR  ${EMAIL} / ${PASSWORD}\n` +
+				`   STUDENT     ${studentEmail} / ${PASSWORD}\n`,
 		);
 	});
 });

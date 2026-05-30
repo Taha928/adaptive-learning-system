@@ -582,13 +582,13 @@ enum QuizStatus {
 }
 
 enum QuestionType {
-    multipleChoice @map("multiple_choice")
-    trueFalse      @map("true_false")
-    shortAnswer    @map("short_answer")
+    multipleChoice
+    trueFalse
+    shortAnswer
 }
 
 enum AttemptStatus {
-    inProgress @map("in_progress")
+    inProgress
     submitted
     graded
 }
@@ -602,19 +602,19 @@ enum StudyPlanStatus {
 
 enum StudyPlanItemStatus {
     pending
-    inProgress @map("in_progress")
+    inProgress
     completed
     skipped
 }
 
 enum PerformanceEventType {
-    lessonViewed      @map("lesson_viewed")
-    lessonCompleted   @map("lesson_completed")
-    quizStarted       @map("quiz_started")
-    quizCompleted     @map("quiz_completed")
-    materialViewed    @map("material_viewed")
-    chatAsked         @map("chat_asked")
-    planItemCompleted @map("plan_item_completed")
+    lessonViewed
+    lessonCompleted
+    quizStarted
+    quizCompleted
+    materialViewed
+    chatAsked
+    planItemCompleted
     login
 }
 

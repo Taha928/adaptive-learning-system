@@ -2,8 +2,10 @@ import { QuizDifficulty } from "@prisma/client";
 import { z } from "zod/v4";
 
 // List quizzes, optionally scoped to a single course.
+// Auto-generated adaptive "next" quizzes are hidden unless includeAdaptive.
 export const listQuizzesSchema = z.object({
 	courseId: z.string().uuid().optional(),
+	includeAdaptive: z.boolean().default(false),
 });
 
 // Get a quiz by id (also used by getForAttempt).
@@ -21,6 +23,16 @@ export const generateFromTopicSchema = z.object({
 // Start an attempt at a quiz.
 export const startAttemptSchema = z.object({
 	quizId: z.string().uuid(),
+});
+
+// List the current user's attempts (optionally scoped to a course).
+export const listMyAttemptsSchema = z.object({
+	courseId: z.string().uuid().optional(),
+});
+
+// Get a single graded attempt's full result (re-openable review).
+export const attemptIdSchema = z.object({
+	attemptId: z.string().uuid(),
 });
 
 // A single answer submitted as part of an attempt.
@@ -43,3 +55,5 @@ export type GenerateFromTopicInput = z.infer<typeof generateFromTopicSchema>;
 export type StartAttemptInput = z.infer<typeof startAttemptSchema>;
 export type SubmitAnswerInput = z.infer<typeof submitAnswerSchema>;
 export type SubmitAttemptInput = z.infer<typeof submitAttemptSchema>;
+export type ListMyAttemptsInput = z.infer<typeof listMyAttemptsSchema>;
+export type AttemptIdInput = z.infer<typeof attemptIdSchema>;

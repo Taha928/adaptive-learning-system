@@ -5,7 +5,10 @@ import {
 	BotIcon,
 	ChartColumnIcon,
 	ChevronRight,
+	ClipboardListIcon,
+	FileTextIcon,
 	GraduationCapIcon,
+	LayoutDashboardIcon,
 	ListChecksIcon,
 	SettingsIcon,
 	UsersIcon,
@@ -60,6 +63,12 @@ export function OrganizationMenuItems(): React.JSX.Element {
 			label: "Application",
 			items: [
 				{
+					label: "Home",
+					href: basePath,
+					icon: LayoutDashboardIcon,
+					exactMatch: true,
+				},
+				{
 					label: "Courses",
 					href: `${basePath}/courses`,
 					icon: BookOpenIcon,
@@ -68,6 +77,12 @@ export function OrganizationMenuItems(): React.JSX.Element {
 					label: "Quizzes",
 					href: `${basePath}/quizzes`,
 					icon: ListChecksIcon,
+					exactMatch: true,
+				},
+				{
+					label: "My Attempts",
+					href: `${basePath}/quizzes/attempts`,
+					icon: ClipboardListIcon,
 				},
 				{
 					label: "Study Plan",
@@ -78,6 +93,11 @@ export function OrganizationMenuItems(): React.JSX.Element {
 					label: "Tutor Analytics",
 					href: `${basePath}/tutor-analytics`,
 					icon: ChartColumnIcon,
+				},
+				{
+					label: "Progress Report",
+					href: `${basePath}/report`,
+					icon: FileTextIcon,
 				},
 				{
 					label: "AI Tutor",

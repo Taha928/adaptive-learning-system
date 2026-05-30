@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type * as React from "react";
-import { OrganizationOverview } from "@/components/organization/organization-overview";
+import { QuizAttemptsTable } from "@/components/organization/quiz-attempts-table";
 import {
 	Page,
 	PageBody,
@@ -13,10 +13,10 @@ import {
 import { getOrganizationById, getSession } from "@/lib/auth/server";
 
 export const metadata: Metadata = {
-	title: "Home",
+	title: "My Attempts",
 };
 
-export default async function OrganizationHomePage(): Promise<React.JSX.Element> {
+export default async function MyAttemptsPage(): Promise<React.JSX.Element> {
 	const session = await getSession();
 	if (!session?.session.activeOrganizationId) {
 		redirect("/dashboard");
@@ -36,14 +36,16 @@ export default async function OrganizationHomePage(): Promise<React.JSX.Element>
 					<PageBreadcrumb
 						segments={[
 							{ label: "Home", href: "/dashboard" },
-							{ label: organization.name },
+							{ label: organization.name, href: "/dashboard/organization" },
+							{ label: "Quizzes", href: "/dashboard/organization/quizzes" },
+							{ label: "My Attempts" },
 						]}
 					/>
 				</PagePrimaryBar>
 			</PageHeader>
 			<PageBody>
-				<PageContent title={`Welcome to ${organization.name}`}>
-					<OrganizationOverview />
+				<PageContent title="My Attempts">
+					<QuizAttemptsTable />
 				</PageContent>
 			</PageBody>
 		</Page>

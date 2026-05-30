@@ -3,6 +3,7 @@
 import NiceModal from "@ebay/nice-modal-react";
 import { ListChecksIcon, PlayIcon, SparklesIcon } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { GenerateQuizModal } from "@/components/organization/generate-quiz-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,15 +35,24 @@ const DIFFICULTY_STYLES: Record<string, string> = {
 };
 
 export function QuizzesTable({ courseId }: { courseId?: string }) {
+	const [showAdaptive, setShowAdaptive] = useState(false);
 	const { data, isPending } = trpc.organization.quiz.list.useQuery({
 		courseId,
+		includeAdaptive: showAdaptive,
 	});
 
 	const quizzes = data?.quizzes ?? [];
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-center justify-end">
+			<div className="flex items-center justify-between gap-2">
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setShowAdaptive((v) => !v)}
+				>
+					{showAdaptive ? "Hide adaptive practice" : "Show adaptive practice"}
+				</Button>
 				<Button onClick={() => NiceModal.show(GenerateQuizModal, { courseId })}>
 					<SparklesIcon className="size-4" />
 					Generate Quiz from Topic
@@ -78,57 +88,85 @@ export function QuizzesTable({ courseId }: { courseId?: string }) {
 								<TableHead>Difficulty</TableHead>
 								<TableHead>Status</TableHead>
 								<TableHead className="text-right">Questions</TableHead>
-								<TableHead className="text-right">Attempts</TableHead>
+								<TableHead>Your result</TableHead>
 								<TableHead className="w-24" />
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{quizzes.map((quiz) => (
-								<TableRow key={quiz.id}>
-									<TableCell className="font-medium">
-										<Link
-											href={`/dashboard/organization/quizzes/${quiz.id}/take`}
-											className="hover:underline"
-										>
-											{quiz.title}
-										</Link>
-									</TableCell>
-									<TableCell className="text-muted-foreground">
-										{quiz.course?.title ?? "—"}
-									</TableCell>
-									<TableCell>
-										<Badge
-											className={cn(
-												"uppercase",
-												DIFFICULTY_STYLES[quiz.difficulty] ?? "",
-											)}
-										>
-											{quiz.difficulty}
-										</Badge>
-									</TableCell>
-									<TableCell>
-										<Badge variant={STATUS_VARIANT[quiz.status] ?? "secondary"}>
-											{capitalize(quiz.status)}
-										</Badge>
-									</TableCell>
-									<TableCell className="text-right text-muted-foreground">
-										{quiz._count.questions}
-									</TableCell>
-									<TableCell className="text-right text-muted-foreground">
-										{quiz._count.attempts}
-									</TableCell>
-									<TableCell className="text-right">
-										<Button asChild size="sm" variant="outline">
+							{quizzes.map((quiz) => {
+								const best = quiz.attempts[0];
+								return (
+									<TableRow key={quiz.id}>
+										<TableCell className="font-medium">
 											<Link
 												href={`/dashboard/organization/quizzes/${quiz.id}/take`}
+												className="hover:underline"
 											>
-												<PlayIcon className="size-3.5" />
-												Take
+												{quiz.title}
 											</Link>
-										</Button>
-									</TableCell>
-								</TableRow>
-							))}
+											{quiz.createdById === null && (
+												<Badge variant="outline" className="ml-2 text-xs">
+													Adaptive
+												</Badge>
+											)}
+										</TableCell>
+										<TableCell className="text-muted-foreground">
+											{quiz.course?.title ?? "—"}
+										</TableCell>
+										<TableCell>
+											<Badge
+												className={cn(
+													"uppercase",
+													DIFFICULTY_STYLES[quiz.difficulty] ?? "",
+												)}
+											>
+												{quiz.difficulty}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={STATUS_VARIANT[quiz.status] ?? "secondary"}
+											>
+												{capitalize(quiz.status)}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-right text-muted-foreground">
+											{quiz._count.questions}
+										</TableCell>
+										<TableCell>
+											{best ? (
+												<Link
+													href={`/dashboard/organization/quizzes/attempts/${best.id}`}
+													className="inline-flex items-center gap-2 hover:underline"
+												>
+													<Badge
+														variant={best.passed ? "default" : "destructive"}
+													>
+														{best.passed ? "Passed" : "Not passed"}
+													</Badge>
+													<span className="text-muted-foreground text-sm">
+														{best.percentage ?? 0}%
+													</span>
+												</Link>
+											) : (
+												<span className="text-muted-foreground text-sm">
+													Not attempted
+												</span>
+											)}
+										</TableCell>
+										<TableCell className="text-right">
+											<Button asChild size="sm" variant="outline">
+												<Link
+													href={`/dashboard/organization/quizzes/${quiz.id}/take`}
+												>
+													<PlayIcon className="size-3.5" />
+													Take
+												</Link>
+											</Button>
+										</TableCell>
+									</TableRow>
+								);
+							})}
 						</TableBody>
 					</Table>
 				</div>

@@ -41,6 +41,13 @@ const accuracyChartConfig = {
 	},
 } satisfies ChartConfig;
 
+const progressChartConfig = {
+	mastery: {
+		label: "Mastery %",
+		color: "var(--chart-1)",
+	},
+} satisfies ChartConfig;
+
 function formatDateLabel(iso: string): string {
 	const date = new Date(iso);
 	return date.toLocaleDateString(undefined, {
@@ -54,12 +61,17 @@ export function TutorAnalytics(): React.JSX.Element {
 	const masteryQuery = trpc.organization.analytics.getTopicMastery.useQuery();
 	const trendQuery = trpc.organization.analytics.getAccuracyTrend.useQuery();
 	const weakQuery = trpc.organization.analytics.getWeakTopics.useQuery();
+	const timelineQuery =
+		trpc.organization.analytics.getMasteryTimeline.useQuery();
+	const qualityQuery = trpc.organization.analytics.getQuizQuality.useQuery();
 
 	const isLoading =
 		overviewQuery.isPending ||
 		masteryQuery.isPending ||
 		trendQuery.isPending ||
-		weakQuery.isPending;
+		weakQuery.isPending ||
+		timelineQuery.isPending ||
+		qualityQuery.isPending;
 
 	if (isLoading) {
 		return <CenteredSpinner />;
@@ -77,6 +89,13 @@ export function TutorAnalytics(): React.JSX.Element {
 		date: formatDateLabel(point.date),
 		percentage: point.percentage,
 	}));
+
+	const timelineData = (timelineQuery.data ?? []).map((point) => ({
+		label: `#${point.index}`,
+		mastery: point.mastery,
+	}));
+
+	const quality = qualityQuery.data;
 
 	return (
 		<div className="space-y-6">
@@ -139,6 +158,21 @@ export function TutorAnalytics(): React.JSX.Element {
 								? `${overview.averageScore}%`
 								: "—"}
 						</CardTitle>
+					</CardHeader>
+				</Card>
+				<Card>
+					<CardHeader>
+						<CardDescription>AI quiz quality</CardDescription>
+						<CardTitle className="text-2xl">
+							{quality?.validPercentage != null
+								? `${quality.validPercentage}%`
+								: "—"}
+						</CardTitle>
+						<CardDescription className="text-xs">
+							{quality?.objectiveQuestions
+								? `${quality.validQuestions}/${quality.objectiveQuestions} questions valid`
+								: "No AI questions yet"}
+						</CardDescription>
 					</CardHeader>
 				</Card>
 			</div>
@@ -219,6 +253,48 @@ export function TutorAnalytics(): React.JSX.Element {
 					</CardContent>
 				</Card>
 			</div>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Learning progress</CardTitle>
+					<CardDescription>
+						Mastery after each quiz completion — the adaptive loop should trend
+						upward over time.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{timelineData.length === 0 ? (
+						<p className="py-12 text-center text-muted-foreground text-sm">
+							Complete quizzes to see your mastery progress over time.
+						</p>
+					) : (
+						<ChartContainer config={progressChartConfig}>
+							<LineChart
+								accessibilityLayer
+								data={timelineData}
+								margin={{ left: 12, right: 12 }}
+							>
+								<CartesianGrid vertical={false} />
+								<XAxis
+									dataKey="label"
+									tickLine={false}
+									axisLine={false}
+									tickMargin={8}
+								/>
+								<YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
+								<ChartTooltip content={<ChartTooltipContent />} />
+								<Line
+									dataKey="mastery"
+									type="monotone"
+									stroke="var(--color-mastery)"
+									strokeWidth={2}
+									dot={false}
+								/>
+							</LineChart>
+						</ChartContainer>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

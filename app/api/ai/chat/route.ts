@@ -6,10 +6,10 @@ import {
 	chatModels,
 	DEFAULT_CHAT_MODEL,
 } from "@/config/billing.config";
-import { assertUserIsOrgMember, getSession } from "@/lib/auth/server";
 // Single source of truth for the tutor persona + model so the chat surface
 // never drifts from the quiz/study-plan generation surfaces.
 import { TUTOR_SYSTEM_PROMPT, tutorModel } from "@/lib/ai/tutor";
+import { assertUserIsOrgMember, getSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
@@ -158,9 +158,53 @@ export async function POST(req: Request) {
 		}
 	}
 
+	// Personalize the tutor: fold the student's currently-weak topics into the
+	// system prompt so the chat is adaptive rather than generic.
+	let systemPrompt = TUTOR_SYSTEM_PROMPT;
+	if (organizationId) {
+		try {
+			const logs = await prisma.performanceLog.findMany({
+				where: {
+					organizationId,
+					userId: session.user.id,
+					topicId: { not: null },
+					masteryScore: { not: null },
+				},
+				orderBy: { occurredAt: "desc" },
+				select: {
+					topicId: true,
+					masteryScore: true,
+					topic: { select: { title: true } },
+				},
+				take: 100,
+			});
+
+			const seen = new Set<string>();
+			const weakTopics: string[] = [];
+			for (const log of logs) {
+				if (log.topicId && !seen.has(log.topicId)) {
+					seen.add(log.topicId);
+					if ((log.masteryScore ?? 0) < 0.6 && log.topic?.title) {
+						weakTopics.push(log.topic.title);
+					}
+				}
+			}
+
+			if (weakTopics.length > 0) {
+				systemPrompt += `\n\nContext about this student: they are currently weakest on these topics — ${weakTopics
+					.slice(0, 8)
+					.join(
+						", ",
+					)}. When relevant, steer your explanations, examples, and practice suggestions toward strengthening these areas.`;
+			}
+		} catch (error) {
+			logger.warn({ error, organizationId }, "Failed to build tutor context");
+		}
+	}
+
 	const result = streamText({
 		model: tutorModel(selectedModel),
-		system: TUTOR_SYSTEM_PROMPT,
+		system: systemPrompt,
 		messages,
 		async onFinish({ text }) {
 			// Log the interaction for analytics (SRS R3). Best-effort: a logging
