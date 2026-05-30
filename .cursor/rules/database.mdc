@@ -1,0 +1,97 @@
+---
+description: Database schema and Prisma ORM patterns
+globs: "lib/db/**/*.ts,trpc/**/*.ts,prisma/**/*"
+alwaysApply: false
+---
+
+# Database Rules (Prisma ORM)
+
+## Schema Location
+
+- Schema: `prisma/schema.prisma` (models, relations, enums)
+- Client: `lib/db/prisma.ts`
+
+## Multi-Tenant Data (CRITICAL)
+
+**Always filter by organization for tenant data:**
+
+```typescript
+import { prisma } from "@/lib/db";
+
+// CORRECT
+const leads = await prisma.lead.findMany({
+  where: { organizationId: ctx.organization.id },
+});
+
+// WRONG - Data leak across tenants
+const leads = await prisma.lead.findMany();
+```
+
+## Query Patterns
+
+### Simple Query
+
+```typescript
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: { memberships: true },
+});
+```
+
+### Complex Query
+
+```typescript
+const leads = await prisma.lead.findMany({
+  where: {
+    organizationId: orgId,
+    status: "qualified",
+  },
+  orderBy: { createdAt: "desc" },
+  take: 10,
+});
+```
+
+### Transactions
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  await tx.subscriptionItem.deleteMany({ where: { subscriptionId } });
+  await tx.subscriptionItem.createMany({ data: newItems });
+});
+```
+
+## Adding New Tables
+
+1. Add model to `prisma/schema.prisma`
+2. Add relations in the same file
+3. Run `npx prisma migrate dev --name your_migration_name`
+
+## Naming Conventions
+
+- Models: `PascalCase` (e.g., `User`, `Lead`, `CreditBalance`)
+- Fields: `camelCase` with `@map("snake_case")` for DB columns
+- Foreign keys: `[entity]Id` (e.g., `organizationId`, `userId`)
+- Timestamps: `createdAt`, `updatedAt`
+
+## Error Handling
+
+```typescript
+import { Prisma } from "@prisma/client";
+
+try {
+  await prisma.user.create({ data });
+} catch (error) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") { /* unique constraint */ }
+    if (error.code === "P2025") { /* not found */ }
+  }
+  throw error;
+}
+```
+
+## Best Practices
+
+- Always use `$transaction` for multi-step operations
+- Use `select` to fetch only needed fields for performance
+- Add appropriate indexes with `@@index` for frequently queried columns
+- Use `onDelete: Cascade` for dependent data

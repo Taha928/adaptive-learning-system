@@ -1,0 +1,225 @@
+Software Requirements
+Specification
+for
+<Personalized Learning Tutor
+Agent >
+Version 1.0 approved
+Prepared by <Muhammad Taha >
+<UET
+Peshawar(BS
+Data Science) >
+<30 Nov 2025 >
+Copyright © 2002 by Karl E. Wiegers. Permission is granted to use, modify, and distribute this document.
+Software Requirements Specification for <Project> Page 2
+Table of Contents
+Table of Contents ..................................................................................................................... ii
+Revision History ....................................................................................................................... ii
+1. Introduction ..................................................................................................................... 1
+1.1 Purpose .............................................................................................................................. 1
+1.2 Document Conventions ..................................................................................................... 1
+1.3 Intended Audience and Reading Suggestions .................................................................... 1
+1.4 Project Scope ...................................................................................................................... 1
+1.5 References .......................................................................................................................... 1
+2. Overall Description .......................................................................................................... 2
+2.1 Product Perspective ............................................................................................................ 2
+2.2 Product Features ................................................................................................................ 2
+2.3 User Classes and Characteristics ........................................................................................ 2
+2.4 Operating Environment ....................................................................................................... 2
+2.5 Design and Implementation Constraints ............................................................................ 2
+2.6 User Documentation ........................................................................................................... 2
+2.7 Assumptions and Dependencies ......................................................................................... 3
+3. System Features ............................................................................................................... 3
+3.1 Adaptive Learning Content Generation .............................................................................. 3
+3.2 Student Performance Tracking & Analytics ........................................................................
+3
+3.3 Personalized Study Plan Recommendation ........................................................................ 4
+3.4 Autonomous Workflow Automation (n8n + Gemini) .......................................................... 4
+4. External Interface Requirements .................................................................................... 4
+4.1 User Interfaces .................................................................................................................... 4
+4.2 Hardware Interfaces ........................................................................................................... 4
+4.3 Software Interfaces ............................................................................................................ 4
+4.4 Communications Interfaces ................................................................................................ 4
+5. Other Nonfunctional Requirements ............................................................................... 5
+5.1 Performance Requirements ............................................................................................... 5
+5.2 Safety Requirements .......................................................................................................... 5
+5.3 Security Requirements ....................................................................................................... 5
+5.4 Software Quality Attributes ................................................................................................ 5
+5.5 Scalability & Usability Requirements .................................................................................. 5
+6. Other Requirements ........................................................................................................ 5
+Appendix A: Glossary ......................................................................................................... 5
+Appendix B: Analysis Models ............................................................................................ 6
+Appendix C: Issues List ....................................................................................................... 6
+Revision History
+Name Date Reason For Changes Version
+Muhammad Taha 30-11-
+2025 Initial draft 1.0
+Software Requirements Specification for <Project> Page 3
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) describes the complete functional and nonfunctional requirements for the Personalized Learning Tutor Agent, a web-based AI system
+that adapts learning content, quizzes, and study recommendations based on each student’s
+performance.
+The system integrates Google Gemini LLM and n8n agentic workflows to create a real-time
+personalized learning experience.
+1.2 Document Conventions
+ LLM → Large Language Model
+ AI → Artificial Intelligence
+ n8n → Workflow automation and agentic orchestration tool
+ API → Application Programming Interface
+ UI → User Interface
+1.3 Intended Audience & Reading Suggestions
+This SRS is intended for:
+ Students developing the project
+ Supervisor
+ Developers (frontend, backend)
+ Evaluators and testers
+ Future researchers building AI learning systems
+Suggested reading order: Introduction → System Features → Interfaces → Non-functional
+Requirements.
+1.4 Project Scope
+The project includes:
+ Collecting course material and student performance data
+ Using Gemini to generate adaptive quizzes, summaries, and feedback
+ n8n workflows for automation and memory management
+ A web dashboard for student interaction and analytics
+ Evaluation of student learning improvement
+Limitations: Availability of datasets, API costs, and computing limits.
+1.5 References
+ Google DeepMind, Gemini Documentation (2024)
+ n8n Agent Automation Docs (2024)
+ AI in Education Journals (2021–2023)
+ OECD AI in Education Report (2022)
+2. Overall Description
+2.1 Product Perspective
+The system is a standalone web application integrating:
+ Gemini API for content generation
+ n8n workflows for decision making
+ Database (Firebase/MongoDB) for progress tracking
+ Web dashboard for student usage
+It acts like a personalized tutor similar to Coursera/EdTech tools but with real-time adaptive
+learning.
+2.2 Product Features
+ Upload and analyze course content
+ Generate personalized quizzes and explanations
+ Monitor student performance and engagement
+ Adjust difficulty and study paths dynamically
+ Provide progress reports and study recommendations
+ Autonomous workflows via n8n
+ Real-time dashboard and interactions
+2.3 User Classes and Characteristics
+ Students: Primary users, require adaptive learning
+ Admin/Instructor: Upload content, monitor student progress
+ System (AI Agent): Autonomous adaptation and feedback generation
+2.4 Operating Environment
+ Web browser (Chrome, Edge, Firefox)
+ Backend: Node.js / Python
+ Frontend: React + Vite
+ Database: Firebase / MongoDB
+ APIs: Gemini, n8n
+ OS: Windows/Linux
+2.5 Design and Implementation Constraints
+ Limited computational resources
+ API rate limits
+ Internet dependency
+ User privacy compliance
+ Time constraints of semester
+2.6 User Documentation
+ User manual (web guide)
+ API integration documentation
+ Developer notes & architecture diagrams
+2.7 Assumptions and Dependencies
+ Students have stable internet
+ Gemini API remains available
+ n8n workflows are compatible with APIs
+ Course content is provided or collected
+3. System Features
+3.1 Feature: Data Collection & Ingestion
+Description:
+ Upload PDFs, notes, or question banks
+ Store student quiz results, time spent, engagement logs
+Requirements:
+ R1: System must support PDF/text ingestion
+ R2: Data must be stored in structured form
+ R3: Log all student interactions
+3.2 Feature: Data Processing & Preprocessing
+Description:
+ Clean and extract text
+ Categorize content by topic
+ Prepare inputs for Gemini
+Requirements:
+ R4: Extract text from uploaded materials
+ R5: Segment content into topics/lessons
+3.3 Feature: Model Training & Evaluation (Gemini)
+Description:
+ Generate adaptive quizzes, summaries, hints
+ Evaluate student answers and difficulty level
+Requirements:
+ R6: Use Gemini API for generating educational content
+ R7: Provide performance metrics (accuracy, time, difficulty score)
+3.4 Feature: Adaptive Feedback & Study Plan Generation
+Description:
+ Adjust difficulty in real-time
+ Generate study plans based on student behavior
+Requirements:
+ R8: n8n must orchestrate workflows
+ R9: Study plan must refresh dynamically
+3.5 Feature: Model Deployment & Monitoring
+Description:
+ Monitor student progress
+ Detect learning difficulties
+ Update recommendations
+Requirements:
+ R10: Monitoring dashboard for admin
+ R11: Alerts for weak performance patterns
+4. External Interface Requirements
+4.1 User Interface
+ Student dashboard
+ Quiz interface
+ Real-time feedback widget
+ Admin content upload panel
+4.2 Hardware Interfaces
+None (web-based).
+4.3 Software Interfaces
+ Gemini API
+ n8n workflow engine
+ Firebase/MongoDB
+4.4 Communication Interfaces
+ HTTPS for secure communication
+ REST API endpoints
+ WebSockets for real-time updates
+5. Nonfunctional Requirements
+5.1 Performance Requirements
+ Quiz generation response time < 3 seconds
+ Dashboard loading < 2 seconds
+5.2 Security & Privacy Requirements
+ Encrypt user data
+ No student data shared with third parties
+ Token-based authentication
+5.3 Software Quality Attributes
+ Reliability: 95% uptime
+ Maintainability: Modular architecture
+ Robustness: Fail-safe recovery
+5.4 Scalability
+ Support increasing number of students
+ Allow more content and subjects
+5.5 Usability Requirements
+ Simple, intuitive UI
+ Mobile-friendly access
+6. Other Requirements
+ Must comply with educational data ethics
+ Proper error handling
+ System logs for debugging
+Appendix A: Glossary
+ LLM: Large Language Model
+ n8n: Low-code workflow automation tool
+ Gemini: Google AI model for reasoning and generation
+ Adaptive Learning: Personalized learning approach
+Appendix B: Analysis Models
+ System architecture
+ Workflow diagrams
+ Use case diagram
+Appendix C: Issues List
+ TBD: Final dataset size
+ TBD: Dashboard UI final design
+ TBD: API usage limits
+Software Requirements Specification for <Project> Page 13
