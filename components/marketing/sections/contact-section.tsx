@@ -99,7 +99,7 @@ export function ContactSection() {
 					</h1>
 					<div className="max-w-3xl text-lg leading-8 text-marketing-fg-muted">
 						<p>
-							A question about Lumen, a partnership for your school, or feedback
+							A question about StudyNex, a partnership for your school, or feedback
 							from a late-night study session? We read every message.
 						</p>
 					</div>

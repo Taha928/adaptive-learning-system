@@ -3,13 +3,9 @@ import { FaqSection } from "@/components/marketing/sections/faq-section";
 import { FeaturesSection } from "@/components/marketing/sections/features-section";
 import { HeroSection } from "@/components/marketing/sections/hero-section";
 import { HowItWorksSection } from "@/components/marketing/sections/how-it-works-section";
-import { LatestArticlesSection } from "@/components/marketing/sections/latest-articles-section";
 import { LogoCloudSection } from "@/components/marketing/sections/logo-cloud-section";
 import { PricingSection } from "@/components/marketing/sections/pricing-section";
-import { StatsSection } from "@/components/marketing/sections/stats-section";
-import { TestimonialsSection } from "@/components/marketing/sections/testimonials-section";
 import { appConfig } from "@/config/app.config";
-import { getAllPosts } from "@/lib/marketing/blog/posts";
 
 function OrganizationJsonLd() {
 	const jsonLd = {
@@ -46,14 +42,6 @@ function WebSiteJsonLd() {
 		name: appConfig.appName,
 		description: appConfig.description,
 		url: appConfig.baseUrl,
-		potentialAction: {
-			"@type": "SearchAction",
-			target: {
-				"@type": "EntryPoint",
-				urlTemplate: `${appConfig.baseUrl}/blog?q={search_term_string}`,
-			},
-			"query-input": "required name=search_term_string",
-		},
 	};
 
 	return (
@@ -64,21 +52,19 @@ function WebSiteJsonLd() {
 	);
 }
 
-export default async function HomePage() {
-	const posts = await getAllPosts();
-
+export default function HomePage() {
 	const faqContent = {
 		headline: "Questions, answered",
 		items: [
 			{
 				question: "What can I upload?",
 				answer:
-					"PDFs, Word docs, plain text notes and web links. Lumen extracts the text, structures it into topics, and uses it as the source of truth for lessons, quizzes and the tutor's answers.",
+					"PDFs, Word docs, plain text notes and web links. StudyNex extracts the text, structures it into topics, and uses it as the source of truth for lessons, quizzes and the tutor's answers.",
 			},
 			{
 				question: "Where do the quizzes and answers come from?",
 				answer:
-					"From your own material. Lumen uses Google's Gemini models to generate questions and tutor replies grounded in what you uploaded — and points back to the exact slide or page so you can verify it.",
+					"From your own material. StudyNex uses Google's Gemini models to generate questions and tutor replies grounded in what you uploaded, and points back to the exact slide or page so you can verify it.",
 			},
 			{
 				question: "Do I need a credit card to start?",
@@ -120,11 +106,8 @@ export default async function HomePage() {
 			<LogoCloudSection />
 			<FeaturesSection />
 			<HowItWorksSection />
-			<StatsSection />
-			<TestimonialsSection />
 			<PricingSection headline="Pricing that fits a student budget." />
 			<FaqSection content={faqContent} />
-			<LatestArticlesSection posts={posts} />
 			<CtaSection content={ctaContent} />
 		</>
 	);

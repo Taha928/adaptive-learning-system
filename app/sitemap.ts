@@ -1,4 +1,3 @@
-import { allPosts } from "content-collections";
 import { getAllLegalPages } from "@/lib/marketing/legal/pages";
 import { getBaseUrl } from "@/lib/utils";
 
@@ -39,28 +38,10 @@ export default async function Sitemap(): Promise<SitemapEntry[]> {
 			changeFreq: "monthly",
 		},
 		{
-			url: `${baseUrl}/blog`,
-			lastModified: new Date(),
-			priority: 0.8,
-			changeFreq: "daily",
-		},
-		{
 			url: `${baseUrl}/faq`,
 			lastModified: new Date(),
 			priority: 0.7,
 			changeFreq: "monthly",
-		},
-		{
-			url: `${baseUrl}/careers`,
-			lastModified: new Date(),
-			priority: 0.6,
-			changeFreq: "weekly",
-		},
-		{
-			url: `${baseUrl}/changelog`,
-			lastModified: new Date(),
-			priority: 0.6,
-			changeFreq: "weekly",
 		},
 		{
 			url: `${baseUrl}/story`,
@@ -69,14 +50,6 @@ export default async function Sitemap(): Promise<SitemapEntry[]> {
 			changeFreq: "monthly",
 		},
 	];
-
-	// Blog posts
-	const blogPosts: SitemapEntry[] = allPosts.map((post) => ({
-		url: `${baseUrl}/blog/${post.path}`,
-		lastModified: post.date,
-		priority: 0.7,
-		changeFreq: "monthly",
-	}));
 
 	// Legal pages
 	const legalPages = await getAllLegalPages();
@@ -87,5 +60,5 @@ export default async function Sitemap(): Promise<SitemapEntry[]> {
 		changeFreq: "yearly",
 	}));
 
-	return [...staticPages, ...blogPosts, ...legalEntries];
+	return [...staticPages, ...legalEntries];
 }

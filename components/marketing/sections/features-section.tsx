@@ -24,7 +24,7 @@ const features: Feature[] = [
 	{
 		title: "A tutor that knows your material",
 		description:
-			"Ask anything and get answers grounded in your own uploads — with citations back to the exact slide or page. Powered by Gemini, available any hour of the night before the exam.",
+			"Ask anything and get answers grounded in your own uploads, with citations back to the exact slide or page. Powered by Gemini, available any hour of the night before the exam.",
 		icon: SparklesIcon,
 		className: "lg:col-span-2 lg:row-span-2",
 		accent: true,
@@ -32,28 +32,28 @@ const features: Feature[] = [
 	{
 		title: "Notes in, course out",
 		description:
-			"Drop in PDFs, docs or links. Lumen extracts the text and structures it into topics and bite-size lessons.",
+			"Drop in PDFs, docs or links. StudyNex extracts the text and structures it into topics and bite-size lessons.",
 		icon: FileStackIcon,
 		className: "lg:col-span-2",
 	},
 	{
 		title: "Quizzes that adapt",
 		description:
-			"Auto-generated multiple-choice, true/false and short-answer questions that lean into whatever you keep missing — each graded with feedback.",
+			"Auto-generated multiple-choice, true/false and short-answer questions that lean into whatever you keep missing, each graded with feedback.",
 		icon: MessageCircleQuestionIcon,
 		className: "",
 	},
 	{
 		title: "A plan you'll finish",
 		description:
-			"Tell Lumen your goal and exam date. It builds a day-by-day study plan and adjusts as you go.",
+			"Tell StudyNex your goal and exam date. It builds a day-by-day study plan and adjusts as you go.",
 		icon: CalendarCheckIcon,
 		className: "",
 	},
 	{
 		title: "See what's sticking",
 		description:
-			"Mastery scores per topic, time-on-task and quiz trends — so you spend your hours where they count.",
+			"Mastery scores per topic, time-on-task and quiz trends, so you spend your hours where they count.",
 		icon: LineChartIcon,
 		className: "",
 	},
@@ -140,9 +140,9 @@ export function FeaturesSection() {
 						to exam day.
 					</h2>
 					<p className="text-base leading-7 text-marketing-fg-muted text-pretty">
-						No more juggling a PDF reader, a flashcard app and a calendar. Lumen
-						pulls the whole study loop into one place — and the AI does the busy
-						work.
+						No more juggling a PDF reader, a flashcard app and a calendar.
+						StudyNex pulls the whole study loop into one place, and the AI does
+						the busy work.
 					</p>
 				</div>
 

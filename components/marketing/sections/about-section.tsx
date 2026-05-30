@@ -5,18 +5,6 @@ import Link from "next/link";
 import { appConfig } from "@/config/app.config";
 import { cn } from "@/lib/utils";
 
-const stats = [
-	{
-		value: "2.4M+",
-		description: "Adaptive questions practiced by learners every month.",
-	},
-	{
-		value: "120+",
-		description:
-			"Subjects studied, from organic chemistry to constitutional law.",
-	},
-];
-
 const values = [
 	{
 		title: "Understanding over memorizing",
@@ -31,7 +19,7 @@ const values = [
 	{
 		title: "Meet learners where they are",
 		description:
-			"Adaptive by default. The plan bends to your pace, your gaps and your exam date — not the other way around.",
+			"Adaptive by default. The plan bends to your pace, your gaps and your exam date, not the other way around.",
 	},
 	{
 		title: "Your work is yours",
@@ -64,7 +52,7 @@ export function AboutSection() {
 							</h1>
 							<div className="flex max-w-3xl flex-col gap-4 text-lg leading-8 text-marketing-fg-muted">
 								<p>
-									A one-on-one tutor is the single most effective way to learn —
+									A one-on-one tutor is the single most effective way to learn,
 									and historically the most expensive. {appConfig.appName}{" "}
 									exists to close that gap: take the material a learner already
 									has, and turn it into a patient, always-available tutor that
@@ -76,13 +64,13 @@ export function AboutSection() {
 				</div>
 			</section>
 
-			{/* Stats Section */}
-			<section className="py-16" id="stats">
+			{/* Approach Section */}
+			<section className="py-16" id="approach">
 				<div className="mx-auto flex max-w-2xl flex-col gap-10 px-6 md:max-w-3xl lg:max-w-7xl lg:gap-16 lg:px-10">
 					<div className="flex max-w-2xl flex-col gap-6">
 						<div className="flex flex-col gap-2">
 							<div className="text-sm font-semibold text-marketing-fg-muted">
-								The 2-sigma problem, at scale
+								The 2-sigma problem
 							</div>
 							<h2
 								className={cn(
@@ -102,21 +90,6 @@ export function AboutSection() {
 								coursework.
 							</p>
 						</div>
-					</div>
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{stats.map((stat) => (
-							<div
-								key={stat.value}
-								className="relative rounded-2xl border border-marketing-border bg-marketing-card p-7"
-							>
-								<div className="font-display text-4xl tracking-tight text-marketing-fg sm:text-5xl">
-									{stat.value}
-								</div>
-								<p className="mt-2 text-sm leading-6 text-marketing-fg-muted">
-									{stat.description}
-								</p>
-							</div>
-						))}
 					</div>
 				</div>
 			</section>

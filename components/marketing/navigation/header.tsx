@@ -31,34 +31,11 @@ const PRODUCT_LINKS = [
 	},
 ];
 
-const RESOURCE_LINKS = [
-	{
-		title: "Blog",
-		href: "/blog",
-		description: "Learning science and study techniques that work.",
-	},
-	{
-		title: "Documentation",
-		href: "/docs",
-		description: "Guides for getting the most out of Lumen.",
-	},
-	{
-		title: "Changelog",
-		href: "/changelog",
-		description: "The latest features and improvements.",
-	},
-];
-
 const COMPANY_LINKS = [
 	{
 		title: "About",
 		href: "/about",
 		description: "Our mission to give every learner a tutor.",
-	},
-	{
-		title: "Careers",
-		href: "/careers",
-		description: "Help us teach the world.",
 	},
 ];
 
@@ -146,25 +123,6 @@ export function Header() {
 											Pricing
 										</Link>
 									</NavigationMenuLink>
-								</NavigationMenuItem>
-
-								<NavigationMenuItem>
-									<NavigationMenuTrigger className="rounded-full bg-transparent text-marketing-fg hover:bg-marketing-card-hover hover:text-marketing-fg data-[state=open]:bg-marketing-card-hover">
-										Resources
-									</NavigationMenuTrigger>
-									<NavigationMenuContent>
-										<ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-											{RESOURCE_LINKS.map((link) => (
-												<ListItem
-													key={link.title}
-													title={link.title}
-													href={link.href}
-												>
-													{link.description}
-												</ListItem>
-											))}
-										</ul>
-									</NavigationMenuContent>
 								</NavigationMenuItem>
 
 								<NavigationMenuItem>
@@ -307,22 +265,6 @@ export function Header() {
 								>
 									Pricing
 								</Link>
-							</div>
-
-							<div className="flex flex-col gap-4">
-								<p className="text-xs font-semibold tracking-wider text-marketing-fg-subtle uppercase">
-									Resources
-								</p>
-								{RESOURCE_LINKS.map((link) => (
-									<Link
-										key={link.title}
-										href={link.href}
-										onClick={() => setMenuOpen(false)}
-										className="inline-flex rounded-full px-4 -mx-4 py-2 text-3xl font-medium text-marketing-fg hover:bg-marketing-card-hover transition-colors"
-									>
-										{link.title}
-									</Link>
-								))}
 							</div>
 
 							<div className="flex flex-col gap-4">

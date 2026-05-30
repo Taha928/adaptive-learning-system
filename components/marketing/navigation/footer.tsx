@@ -20,18 +20,9 @@ const footerLinks = [
 		],
 	},
 	{
-		group: "Resources",
-		items: [
-			{ title: "Blog", href: "/blog" },
-			{ title: "Documentation", href: "/docs" },
-			{ title: "Changelog", href: "/changelog" },
-		],
-	},
-	{
 		group: "Company",
 		items: [
 			{ title: "About", href: "/about" },
-			{ title: "Careers", href: "/careers" },
 			...(appConfig.contact.enabled
 				? [{ title: "Contact", href: "/contact" }]
 				: []),

@@ -58,7 +58,7 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Marketing tokens - light mode (Lumen: warm paper + honey-amber) */
+  /* Marketing tokens - light mode (StudyNex AI: warm paper + honey-amber) */
   --marketing-bg: oklch(98.6% 0.006 83);
   --marketing-bg-elevated: oklch(100% 0 0);
   --marketing-bg-subtle: oklch(96.4% 0.009 83);
@@ -125,7 +125,7 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Marketing tokens - dark mode (Lumen: warm ink + luminous amber) */
+  /* Marketing tokens - dark mode (StudyNex AI: warm ink + luminous amber) */
   --marketing-bg: oklch(16% 0.012 62);
   --marketing-bg-elevated: oklch(20% 0.013 62);
   --marketing-bg-subtle: oklch(22% 0.014 62);
@@ -286,7 +286,7 @@
     }
   }
 
-  /* Lumen marketing skin: render display/headline text in the Fraunces serif,
+  /* StudyNex AI marketing skin: render display/headline text in the Fraunces serif,
      scoped so the SaaS dashboard keeps its Geist-sans display. The descendant
      selector out-specifies the inlined `.font-display` utility. */
   .marketing-root {

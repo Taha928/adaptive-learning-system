@@ -15,7 +15,7 @@ const contactFaq = {
 		{
 			question: "How quickly will I get a response?",
 			answer:
-				"We typically respond within 24 hours on weekdays. If you're stuck the night before an exam, mention it — we'll prioritize.",
+				"We typically respond within 24 hours on weekdays. If you're stuck the night before an exam, mention it and we'll prioritize.",
 		},
 		{
 			question: "Do you work with schools and bootcamps?",
@@ -23,14 +23,14 @@ const contactFaq = {
 				"Yes. We partner with departments, clubs and bootcamps on shared workspaces and bulk seats. Tell us about your program and we'll find a fit.",
 		},
 		{
-			question: "I'm a student and can't afford it — can you help?",
+			question: "I'm a student and can't afford it. Can you help?",
 			answer:
 				"Reach out with your student ID. We keep a pool of free and discounted seats for learners who need them.",
 		},
 		{
 			question: "I found a bug or have a feature idea.",
 			answer:
-				"Please send it our way. A lot of Lumen exists because a learner emailed us at midnight with a better idea.",
+				"Please send it our way. A lot of StudyNex exists because a learner emailed us at midnight with a better idea.",
 		},
 	],
 };

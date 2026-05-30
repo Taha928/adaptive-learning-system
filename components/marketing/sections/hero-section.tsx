@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	ArrowRightIcon,
-	CheckIcon,
-	ChevronRightIcon,
-	SparklesIcon,
-} from "lucide-react";
+import { ArrowRightIcon, CheckIcon, SparklesIcon } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -61,7 +56,7 @@ function HeroPreview() {
 							<SparklesIcon className="size-3.5" />
 						</span>
 						<span className="font-display text-sm font-medium text-marketing-fg">
-							Lumen tutor
+							StudyNex tutor
 						</span>
 						<span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-marketing-accent-soft px-2 py-0.5 text-[11px] font-medium text-marketing-fg-muted">
 							<span className="size-1.5 rounded-full bg-marketing-accent" />
@@ -72,11 +67,11 @@ function HeroPreview() {
 					{/* Conversation */}
 					<div className="flex flex-col gap-4 p-5">
 						<div className="ml-auto max-w-[78%] rounded-2xl rounded-br-sm bg-marketing-accent px-4 py-2.5 text-sm leading-6 text-marketing-accent-fg">
-							Explain the chain rule like I'm five — using my lecture 4 notes.
+							Explain the chain rule like I'm five, using my lecture 4 notes.
 						</div>
 						<div className="max-w-[88%] rounded-2xl rounded-bl-sm bg-marketing-bg-elevated px-4 py-3 text-sm leading-6 text-marketing-fg ring-1 ring-marketing-border">
 							Think of a function inside a function like a box inside a box. To
-							open both, you peel the outside first, then the inside —{" "}
+							open both, you peel the outside first, then the inside, and{" "}
 							<span className="font-medium text-marketing-fg">
 								multiply the two rates of change
 							</span>
@@ -173,30 +168,6 @@ export function HeroSection() {
 
 			<div className="relative mx-auto grid max-w-2xl grid-cols-1 items-center gap-16 px-6 md:max-w-3xl lg:max-w-7xl lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:px-10">
 				<div className="flex flex-col items-start gap-7 pt-8">
-					{/* Announcement Pill */}
-					<motion.div
-						initial={{ opacity: 0, y: 12 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.6, ease }}
-					>
-						<Link
-							href="/#features"
-							className={cn(
-								"group relative inline-flex max-w-full items-center gap-2.5 overflow-hidden rounded-full py-1 pl-1 pr-3 text-sm",
-								"bg-marketing-bg-elevated ring-1 ring-marketing-border hover:ring-marketing-border-strong transition",
-							)}
-						>
-							<span className="inline-flex items-center gap-1 rounded-full bg-marketing-accent px-2.5 py-0.5 text-xs font-semibold text-marketing-accent-fg">
-								<SparklesIcon className="size-3" />
-								New
-							</span>
-							<span className="truncate text-marketing-fg-muted">
-								AI study plans, built around your exam date
-							</span>
-							<ChevronRightIcon className="size-3.5 shrink-0 text-marketing-fg-subtle transition-transform group-hover:translate-x-0.5" />
-						</Link>
-					</motion.div>
-
 					{/* Headline */}
 					<motion.h1
 						initial={{ opacity: 0, y: 16 }}
@@ -221,9 +192,9 @@ export function HeroSection() {
 						transition={{ duration: 0.7, delay: 0.16, ease }}
 						className="max-w-xl text-lg leading-8 text-marketing-fg-muted"
 					>
-						Upload your slides, PDFs and notes. Lumen breaks them into bite-size
+						Upload your slides, PDFs and notes. StudyNex breaks them into bite-size
 						lessons, writes quizzes that adapt to what you get wrong, and builds
-						a study plan you'll actually finish — with a Gemini tutor on call
+						a study plan you'll actually finish, with a Gemini tutor on call
 						24/7.
 					</motion.p>
 

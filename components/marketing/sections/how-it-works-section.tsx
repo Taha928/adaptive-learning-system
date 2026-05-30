@@ -8,7 +8,7 @@ const steps = [
 		step: "01",
 		title: "Bring your material",
 		description:
-			"Upload lecture slides, a textbook chapter, your messy notes or even a YouTube link. Lumen reads it all and organizes it into topics.",
+			"Upload lecture slides, a textbook chapter, your messy notes or even a YouTube link. StudyNex reads it all and organizes it into topics.",
 	},
 	{
 		step: "02",
@@ -20,7 +20,7 @@ const steps = [
 		step: "03",
 		title: "Track and adapt",
 		description:
-			"Watch mastery climb topic by topic. Lumen reshuffles your study plan so you're always revising the thing you're about to forget.",
+			"Watch mastery climb topic by topic. StudyNex reshuffles your study plan so you're always revising the thing you're about to forget.",
 	},
 ];
 

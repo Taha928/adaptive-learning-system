@@ -16,12 +16,12 @@ const pricingFaq = {
 		{
 			question: "Do I need a credit card to start?",
 			answer:
-				"No. The Free plan lets you build a course, run quizzes and chat with the tutor right away — no card required. Paid plans include a 14-day free trial.",
+				"No. The Free plan lets you build a course, run quizzes and chat with the tutor right away, no card required. Paid plans include a 14-day free trial.",
 		},
 		{
 			question: "Is there a student discount?",
 			answer:
-				"Scholar is already priced for students. If it's still a stretch, email us with your student ID — we keep a pool of free and discounted seats for learners who need them.",
+				"Scholar is already priced for students. If it's still a stretch, email us with your student ID and we'll sort you out. We keep a pool of free and discounted seats for learners who need them.",
 		},
 		{
 			question: "Can my whole class share one workspace?",
