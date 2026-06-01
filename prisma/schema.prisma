@@ -489,6 +489,9 @@ model User {
     banExpires         DateTime? @map("ban_expires") @db.Timestamptz(6)
     onboardingComplete Boolean   @default(false) @map("onboarding_complete")
     twoFactorEnabled   Boolean?  @default(false) @map("two_factor_enabled")
+    currentStreak      Int       @default(0) @map("current_streak")
+    longestStreak      Int       @default(0) @map("longest_streak")
+    lastActiveDate     DateTime? @map("last_active_date") @db.Date
     createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
     updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -585,6 +588,7 @@ enum QuestionType {
     multipleChoice
     trueFalse
     shortAnswer
+    longAnswer
 }
 
 enum AttemptStatus {
@@ -811,6 +815,7 @@ model Answer {
     questionId     String   @map("question_id") @db.Uuid
     userId         String?  @map("user_id") @db.Uuid
     responseText   String?  @map("response_text")
+    responseImage  String?  @map("response_image")
     selectedOption String?  @map("selected_option")
     isCorrect      Boolean? @map("is_correct")
     pointsAwarded  Int      @default(0) @map("points_awarded")

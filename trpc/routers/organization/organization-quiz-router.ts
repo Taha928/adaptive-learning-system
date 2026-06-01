@@ -10,6 +10,7 @@ import {
 import { TRPCError } from "@trpc/server";
 import { generateObject } from "ai";
 import { z } from "zod/v4";
+import { gradeFreeResponse } from "@/lib/ai/quiz-grading";
 import {
 	type Difficulty,
 	nextDifficulty,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/ai/tutor";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { recordStreakActivity } from "@/lib/streak";
 import {
 	attemptIdSchema,
 	generateFromTopicSchema,
@@ -47,9 +49,15 @@ const aiQuizSchema = z.object({
 		.array(
 			z.object({
 				prompt: z.string(),
-				type: z.enum(["multipleChoice", "trueFalse", "shortAnswer"]),
-				// MCQ: 3-4 options; trueFalse: ["True","False"]; shortAnswer: [].
+				type: z.enum([
+					"multipleChoice",
+					"trueFalse",
+					"shortAnswer",
+					"longAnswer",
+				]),
+				// MCQ: 3-4 options; trueFalse: ["True","False"]; short/long: [].
 				options: z.array(z.string()).max(6).default([]),
+				// For short/long answers this is a model answer / rubric used by the AI grader.
 				correctAnswer: z.string(),
 				explanation: z.string(),
 			}),
@@ -61,6 +69,7 @@ const AI_TYPE_TO_DB: Record<string, QuestionType> = {
 	multipleChoice: QuestionType.multipleChoice,
 	trueFalse: QuestionType.trueFalse,
 	shortAnswer: QuestionType.shortAnswer,
+	longAnswer: QuestionType.longAnswer,
 };
 
 type TopicForGeneration = {
@@ -98,12 +107,19 @@ async function generateQuizForTopic(params: {
 	// Keep the prompt bounded so we never blow past model context limits.
 	const sourceText = sourceParts.join("\n\n").slice(0, 12000);
 
+	// Longer quizzes get richer free-response questions; quick ones stay snappy.
+	const includeLong = numQuestions >= 10;
+
 	const prompt = `Create a ${difficulty} difficulty quiz with exactly ${numQuestions} questions for the topic "${topic.title}".
 
 Use ONLY the study material below as the source of truth. Mix the question types:
 - Most should be "multipleChoice" with 3-4 options.
 - Include 1-2 "trueFalse" questions whose options are exactly ["True","False"].
-- Include 1 "shortAnswer" question with an empty options array and a short (1-3 word) correctAnswer.
+- Include 1 "shortAnswer" question with an empty options array and a short (1-3 word) correctAnswer.${
+		includeLong
+			? `\n- Include 1 "longAnswer" scenario-based question with an empty options array. Its prompt should pose a realistic scenario or problem requiring a short paragraph of reasoning; set "correctAnswer" to a concise model answer / marking rubric describing what a correct response must contain.`
+			: ""
+	}
 For multipleChoice and trueFalse, the "correctAnswer" MUST exactly match one of the provided options. Provide a short explanation for each answer.
 
 Study material:
@@ -135,7 +151,9 @@ ${sourceText || "(No additional material provided. Generate questions based on t
 					prompt: q.prompt,
 					type: AI_TYPE_TO_DB[q.type] ?? QuestionType.multipleChoice,
 					options:
-						q.type === "shortAnswer" || q.options.length === 0
+						q.type === "shortAnswer" ||
+						q.type === "longAnswer" ||
+						q.options.length === 0
 							? undefined
 							: (q.options as Prisma.InputJsonValue),
 					correctAnswer: q.correctAnswer,
@@ -378,7 +396,9 @@ export const organizationQuizRouter = createTRPCRouter({
 							questionId: true,
 							selectedOption: true,
 							responseText: true,
+							responseImage: true,
 							isCorrect: true,
+							aiFeedback: true,
 						},
 					},
 				},
@@ -405,10 +425,14 @@ export const organizationQuizRouter = createTRPCRouter({
 								(o): o is string => typeof o === "string",
 							)
 						: [],
-					yourAnswer: a?.selectedOption ?? a?.responseText ?? null,
+					yourAnswer:
+						a?.selectedOption ??
+						a?.responseText ??
+						(a?.responseImage ? "[Image answer]" : null),
 					correctAnswer: q.correctAnswer,
 					explanation: q.explanation,
 					isCorrect: a?.isCorrect ?? false,
+					aiFeedback: a?.aiFeedback ?? null,
 				};
 			});
 
@@ -592,6 +616,40 @@ export const organizationQuizRouter = createTRPCRouter({
 				input.answers.map((a) => [a.questionId, a]),
 			);
 
+			// Pre-grade free-response answers (short/long/image) with the AI BEFORE
+			// opening the grading transaction. AI calls are slow and must never be
+			// held inside a DB transaction. Runs all such questions in parallel.
+			const aiGrades = new Map<
+				string,
+				{ isCorrect: boolean; feedback: string }
+			>();
+			await Promise.all(
+				questions
+					.filter(
+						(q) =>
+							q.type === QuestionType.shortAnswer ||
+							q.type === QuestionType.longAnswer,
+					)
+					.map(async (q) => {
+						const submitted = answerByQuestion.get(q.id);
+						try {
+							const grade = await gradeFreeResponse({
+								prompt: q.prompt,
+								correctAnswer: q.correctAnswer,
+								responseText: submitted?.responseText ?? null,
+								responseImage: submitted?.responseImage ?? null,
+								isLong: q.type === QuestionType.longAnswer,
+							});
+							aiGrades.set(q.id, grade);
+						} catch (error) {
+							logger.error(
+								{ error, questionId: q.id },
+								"AI grading failed; falling back to string match",
+							);
+						}
+					}),
+			);
+
 			// Per-question review detail, returned after grading (safe to reveal
 			// correct answers + explanations once the attempt is submitted).
 			const reviewResults: {
@@ -602,6 +660,7 @@ export const organizationQuizRouter = createTRPCRouter({
 				correctAnswer: string;
 				explanation: string | null;
 				isCorrect: boolean;
+				aiFeedback?: string | null;
 			}[] = [];
 
 			// Grade in a transaction: write Answer[], update attempt, log mastery.
@@ -612,18 +671,42 @@ export const organizationQuizRouter = createTRPCRouter({
 					const submitted = answerByQuestion.get(question.id);
 					const selectedOption = submitted?.selectedOption ?? null;
 					const responseText = submitted?.responseText ?? null;
+					const responseImage = submitted?.responseImage ?? null;
 
-					// Determine correctness. shortAnswer is matched case-insensitively
-					// after trimming; everything else compares the chosen value.
-					const candidate =
-						question.type === QuestionType.shortAnswer
-							? responseText
-							: (selectedOption ?? responseText);
+					const isFreeResponse =
+						question.type === QuestionType.shortAnswer ||
+						question.type === QuestionType.longAnswer;
 
-					const isCorrect =
-						candidate != null &&
-						candidate.trim().toLowerCase() ===
-							question.correctAnswer.trim().toLowerCase();
+					let isCorrect: boolean;
+					let aiFeedback: string | null = null;
+					let yourAnswer: string | null;
+
+					if (isFreeResponse) {
+						// Use the AI grade computed before the transaction.
+						const aiGrade = aiGrades.get(question.id);
+						if (aiGrade) {
+							isCorrect = aiGrade.isCorrect;
+							aiFeedback = aiGrade.feedback;
+						} else {
+							// Fallback when AI grading was unavailable: exact match for
+							// short answers; long answers can't be string-matched.
+							isCorrect =
+								question.type === QuestionType.shortAnswer &&
+								responseText != null &&
+								responseText.trim().toLowerCase() ===
+									question.correctAnswer.trim().toLowerCase();
+						}
+						yourAnswer =
+							responseText ?? (responseImage ? "[Image answer]" : null);
+					} else {
+						// MCQ / true-false: compare the chosen value.
+						const candidate = selectedOption ?? responseText;
+						isCorrect =
+							candidate != null &&
+							candidate.trim().toLowerCase() ===
+								question.correctAnswer.trim().toLowerCase();
+						yourAnswer = candidate;
+					}
 
 					const pointsAwarded = isCorrect ? question.points : 0;
 					score += pointsAwarded;
@@ -636,10 +719,11 @@ export const organizationQuizRouter = createTRPCRouter({
 									(o): o is string => typeof o === "string",
 								)
 							: [],
-						yourAnswer: candidate,
+						yourAnswer,
 						correctAnswer: question.correctAnswer,
 						explanation: question.explanation,
 						isCorrect,
+						aiFeedback,
 					});
 
 					await tx.answer.upsert({
@@ -656,14 +740,18 @@ export const organizationQuizRouter = createTRPCRouter({
 							userId: ctx.user.id,
 							selectedOption,
 							responseText,
+							responseImage,
 							isCorrect,
 							pointsAwarded,
+							aiFeedback,
 						},
 						update: {
 							selectedOption,
 							responseText,
+							responseImage,
 							isCorrect,
 							pointsAwarded,
+							aiFeedback,
 						},
 					});
 				}
@@ -750,6 +838,9 @@ export const organizationQuizRouter = createTRPCRouter({
 					topicId,
 				};
 			});
+
+			// Completing a quiz counts toward the learning streak.
+			await recordStreakActivity(ctx.user.id);
 
 			// Generate the NEXT adaptive quiz at the new difficulty (best-effort).
 			// Done outside the grading transaction so an AI failure never rolls

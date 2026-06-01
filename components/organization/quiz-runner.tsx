@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, SparklesIcon } from "lucide-react";
+import { ArrowRightIcon, ImageIcon, SparklesIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import {
 	type QuizReviewItem,
 	QuizReviewItems,
 } from "@/components/organization/quiz-review-items";
+import { StudyNexMascot } from "@/components/studynex-mascot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +23,22 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 
 type Difficulty = "easy" | "medium" | "hard";
+
+const MAX_ANSWER_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
+
+function fileToDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(file);
+	});
+}
 
 const DIFFICULTY_STYLES: Record<Difficulty, string> = {
 	easy: "bg-emerald-500 text-white border-transparent",
@@ -57,7 +70,35 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 
 	const [attemptId, setAttemptId] = useState<string | null>(null);
 	const [responses, setResponses] = useState<Record<string, string>>({});
+	const [responseImages, setResponseImages] = useState<
+		Record<string, { name: string; url: string }>
+	>({});
 	const [result, setResult] = useState<SubmitResult | null>(null);
+
+	const handleImageSelected = async (questionId: string, file: File | null) => {
+		if (!file) return;
+		if (file.size > MAX_ANSWER_IMAGE_BYTES) {
+			toast.error("Image is too large (max 8 MB).");
+			return;
+		}
+		try {
+			const url = await fileToDataUrl(file);
+			setResponseImages((prev) => ({
+				...prev,
+				[questionId]: { name: file.name, url },
+			}));
+		} catch {
+			toast.error("Could not read the image.");
+		}
+	};
+
+	const removeImage = (questionId: string) => {
+		setResponseImages((prev) => {
+			const next = { ...prev };
+			delete next[questionId];
+			return next;
+		});
+	};
 
 	const startMutation = trpc.organization.quiz.startAttempt.useMutation({
 		onSuccess: (data) => setAttemptId(data.attempt.id),
@@ -82,8 +123,10 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 
 	const questions = quiz?.questions ?? [];
 	const answeredCount = useMemo(
-		() => questions.filter((q) => responses[q.id]?.trim()).length,
-		[questions, responses],
+		() =>
+			questions.filter((q) => responses[q.id]?.trim() || responseImages[q.id])
+				.length,
+		[questions, responses, responseImages],
 	);
 
 	if (isPending) return <CenteredSpinner />;
@@ -97,9 +140,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 			attemptId,
 			answers: questions.map((q) => {
 				const value = responses[q.id]?.trim() || undefined;
-				return q.type === "shortAnswer"
-					? { questionId: q.id, responseText: value }
-					: { questionId: q.id, selectedOption: value };
+				if (q.type === "shortAnswer" || q.type === "longAnswer") {
+					return {
+						questionId: q.id,
+						responseText: value,
+						responseImage: responseImages[q.id]?.url,
+					};
+				}
+				return { questionId: q.id, selectedOption: value };
 			}),
 		});
 	};
@@ -111,13 +159,18 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				<Card>
 					<CardHeader>
 						<div className="flex flex-wrap items-center justify-between gap-3">
-							<div>
-								<CardTitle className="text-2xl">{result.percentage}%</CardTitle>
-								<CardDescription>
-									{result.score} /{" "}
-									{quiz.questions.reduce((s, q) => s + q.points, 0)} points ·{" "}
-									{result.passed ? "Passed" : "Keep practicing"}
-								</CardDescription>
+							<div className="flex items-center gap-3">
+								<StudyNexMascot className="size-12 shrink-0" />
+								<div>
+									<CardTitle className="text-2xl">
+										{result.percentage}%
+									</CardTitle>
+									<CardDescription>
+										{result.score} /{" "}
+										{quiz.questions.reduce((s, q) => s + q.points, 0)} points ·{" "}
+										{result.passed ? "Passed" : "Keep practicing"}
+									</CardDescription>
+								</div>
 							</div>
 							<Badge
 								variant={result.passed ? "default" : "destructive"}
@@ -224,6 +277,10 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				<>
 					{questions.map((q, index) => {
 						const options = toOptions(q.options);
+						const isFreeResponse =
+							q.type === "shortAnswer" ||
+							q.type === "longAnswer" ||
+							options.length === 0;
 						return (
 							<Card key={q.id}>
 								<CardHeader>
@@ -232,17 +289,74 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 									</CardTitle>
 								</CardHeader>
 								<CardContent>
-									{q.type === "shortAnswer" || options.length === 0 ? (
-										<Input
-											placeholder="Type your answer…"
-											value={responses[q.id] ?? ""}
-											onChange={(e) =>
-												setResponses((prev) => ({
-													...prev,
-													[q.id]: e.target.value,
-												}))
-											}
-										/>
+									{isFreeResponse ? (
+										<div className="space-y-3">
+											{q.type === "longAnswer" ? (
+												<Textarea
+													placeholder="Write your answer…"
+													className="min-h-32"
+													value={responses[q.id] ?? ""}
+													onChange={(e) =>
+														setResponses((prev) => ({
+															...prev,
+															[q.id]: e.target.value,
+														}))
+													}
+												/>
+											) : (
+												<Input
+													placeholder="Type your answer…"
+													value={responses[q.id] ?? ""}
+													onChange={(e) =>
+														setResponses((prev) => ({
+															...prev,
+															[q.id]: e.target.value,
+														}))
+													}
+												/>
+											)}
+
+											{/* Image answer (e.g. handwritten maths working). */}
+											{responseImages[q.id] ? (
+												<div className="flex items-center gap-3 rounded-md border p-2">
+													{/* biome-ignore lint/performance/noImgElement: local data URL preview */}
+													<img
+														src={responseImages[q.id]!.url}
+														alt="Your answer"
+														className="size-16 rounded object-cover"
+													/>
+													<span className="min-w-0 flex-1 truncate text-muted-foreground text-sm">
+														{responseImages[q.id]!.name}
+													</span>
+													<Button
+														type="button"
+														size="icon-sm"
+														variant="ghost"
+														onClick={() => removeImage(q.id)}
+														aria-label="Remove image"
+													>
+														<XIcon className="size-4" />
+													</Button>
+												</div>
+											) : (
+												<label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-muted-foreground text-sm transition-colors hover:bg-accent">
+													<ImageIcon className="size-4" />
+													Attach an image of your answer
+													<input
+														type="file"
+														accept="image/*"
+														className="hidden"
+														onChange={(e) => {
+															void handleImageSelected(
+																q.id,
+																e.target.files?.[0] ?? null,
+															);
+															e.target.value = "";
+														}}
+													/>
+												</label>
+											)}
+										</div>
 									) : (
 										<RadioGroup
 											value={responses[q.id] ?? ""}

@@ -13,6 +13,26 @@ function isInstructor(role: string): boolean {
 
 export const organizationAnalyticsRouter = createTRPCRouter({
 	/**
+	 * The signed-in user's learning streak (consecutive active days).
+	 */
+	getStreak: protectedOrganizationProcedure.query(async ({ ctx }) => {
+		const user = await prisma.user.findUnique({
+			where: { id: ctx.user.id },
+			select: {
+				currentStreak: true,
+				longestStreak: true,
+				lastActiveDate: true,
+			},
+		});
+
+		return {
+			currentStreak: user?.currentStreak ?? 0,
+			longestStreak: user?.longestStreak ?? 0,
+			lastActiveDate: user?.lastActiveDate ?? null,
+		};
+	}),
+
+	/**
 	 * High-level counts for the org plus an average quiz score.
 	 * Members see only their own attempts/average; instructors see org-wide.
 	 */

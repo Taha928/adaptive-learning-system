@@ -13,6 +13,8 @@ export type QuizReviewItem = {
 	correctAnswer: string;
 	explanation: string | null;
 	isCorrect: boolean;
+	/** AI tutor feedback for free-response (short/long/image) answers. */
+	aiFeedback?: string | null;
 };
 
 /**
@@ -105,6 +107,14 @@ export function QuizReviewItems({ results }: { results: QuizReviewItem[] }) {
 									</p>
 								)}
 							</div>
+						)}
+						{item.aiFeedback && (
+							<p className="rounded-md bg-primary/5 px-3 py-2 text-muted-foreground text-sm">
+								<span className="font-medium text-foreground">
+									Tutor feedback:{" "}
+								</span>
+								{item.aiFeedback}
+							</p>
 						)}
 						{item.explanation && (
 							<p className="rounded-md bg-muted px-3 py-2 text-muted-foreground text-sm">

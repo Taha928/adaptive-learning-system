@@ -21,7 +21,9 @@
   --popover: var(--color-white);
   --popover-foreground: var(--color-neutral-950);
 
-  --primary: var(--color-neutral-950);
+  /* StudyNex (item 21): calm, educational blue accent on a white + soft-gray
+     base with charcoal text. Minimal saturation, Claude/Khanmigo feel. */
+  --primary: oklch(0.55 0.15 255);
   --primary-foreground: var(--color-white);
 
   --secondary: oklch(96.76% 0.0013 286.38);
@@ -38,8 +40,8 @@
 
   --border: var(--color-neutral-200);
   --input: var(--color-neutral-200);
-  --ring: oklch(0.708 0 0);
-  --input-ring: oklch(0.708 0 0);
+  --ring: oklch(0.55 0.15 255);
+  --input-ring: oklch(0.55 0.15 255);
 
   --chart-1: var(--color-orange-400);
   --chart-2: var(--color-teal-600);
@@ -90,8 +92,8 @@
   --popover: var(--color-neutral-900);
   --popover-foreground: var(--color-white);
 
-  --primary: var(--color-white);
-  --primary-foreground: var(--color-neutral-900);
+  --primary: oklch(0.68 0.14 255);
+  --primary-foreground: oklch(0.18 0.02 255);
 
   --secondary: var(--color-neutral-800);
   --secondary-foreground: oklch(98.43% 0.0017 247.84);

@@ -86,7 +86,7 @@ export function SignInCard(): React.JSX.Element {
 
 	const onSubmit = methods.handleSubmit(async (values) => {
 		try {
-			const { data, error } = await authClient.signIn.email({
+			const { error } = await authClient.signIn.email({
 				...values,
 				fetchOptions: captchaEnabled
 					? {
@@ -98,13 +98,6 @@ export function SignInCard(): React.JSX.Element {
 			});
 			if (error) {
 				throw error;
-			}
-
-			if ((data as any).twoFactorRedirect) {
-				router.replace(
-					withQuery("/auth/verify", Object.fromEntries(searchParams.entries())),
-				);
-				return;
 			}
 
 			// Use window.location.href instead of router.replace to force a full page refresh

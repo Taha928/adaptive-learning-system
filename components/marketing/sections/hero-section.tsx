@@ -3,6 +3,7 @@
 import { ArrowRightIcon, CheckIcon, SparklesIcon } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { RotatingText } from "@/components/marketing/rotating-text";
 import { cn } from "@/lib/utils";
 
 const ease = [0.21, 0.5, 0.18, 1] as const;
@@ -168,6 +169,24 @@ export function HeroSection() {
 
 			<div className="relative mx-auto grid max-w-2xl grid-cols-1 items-center gap-16 px-6 md:max-w-3xl lg:max-w-7xl lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:px-10">
 				<div className="flex flex-col items-start gap-7 pt-8">
+					{/* Rotating eyebrow (item 12) */}
+					<motion.div
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.6, ease }}
+						className="inline-flex items-center gap-2 rounded-full bg-marketing-accent-soft px-3 py-1 font-medium text-marketing-fg-muted text-sm"
+					>
+						<SparklesIcon className="size-3.5 text-marketing-accent" />
+						<RotatingText
+							phrases={[
+								"Learn smarter",
+								"Master weak topics",
+								"Your AI study companion",
+							]}
+							className="text-marketing-fg"
+						/>
+					</motion.div>
+
 					{/* Headline */}
 					<motion.h1
 						initial={{ opacity: 0, y: 16 }}
@@ -192,10 +211,11 @@ export function HeroSection() {
 						transition={{ duration: 0.7, delay: 0.16, ease }}
 						className="max-w-xl text-lg leading-8 text-marketing-fg-muted"
 					>
-						Upload your slides, PDFs and notes. StudyNex breaks them into bite-size
-						lessons, writes quizzes that adapt to what you get wrong, and builds
-						a study plan you'll actually finish, with a Gemini tutor on call
-						24/7.
+						Upload your slides, PDFs, and notes. StudyNex turns them into
+						personalized learning content, generates adaptive quizzes based on
+						your performance, and helps you revise with structured guidance. A
+						Gemini-powered AI tutor is available 24/7 to explain concepts and
+						support your learning.
 					</motion.p>
 
 					{/* CTA Buttons */}

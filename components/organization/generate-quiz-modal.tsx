@@ -26,12 +26,23 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import { useEnhancedModal } from "@/hooks/use-enhanced-modal";
-import { capitalize } from "@/lib/utils";
+import { capitalize, cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 
 export type GenerateQuizModalProps = NiceModalHocProps & {
 	courseId?: string;
 };
+
+/** Quiz length presets (item 9). Adaptivity is independent of length. */
+const QUIZ_PRESETS = [
+	{ label: "Quick Quiz", count: 5, hint: "5 questions · ~2–3 min" },
+	{ label: "Standard Quiz", count: 10, hint: "10 questions · normal practice" },
+	{
+		label: "Practice Test",
+		count: 20,
+		hint: "20 questions · deeper assessment",
+	},
+] as const;
 
 export const GenerateQuizModal = NiceModal.create<GenerateQuizModalProps>(
 	({ courseId }) => {
@@ -114,19 +125,42 @@ export const GenerateQuizModal = NiceModal.create<GenerateQuizModalProps>(
 									</Select>
 								</Field>
 
+								<Field>
+									<Label>Quiz length</Label>
+									<div className="grid grid-cols-3 gap-2">
+										{QUIZ_PRESETS.map((preset) => (
+											<button
+												key={preset.count}
+												type="button"
+												onClick={() => setNumQuestions(preset.count)}
+												className={cn(
+													"flex flex-col items-start gap-0.5 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent",
+													numQuestions === preset.count &&
+														"border-primary bg-primary/5",
+												)}
+											>
+												<span className="font-medium">{preset.label}</span>
+												<span className="text-muted-foreground text-xs">
+													{preset.hint}
+												</span>
+											</button>
+										))}
+									</div>
+								</Field>
+
 								<div className="grid grid-cols-2 gap-4">
 									<Field>
 										<Label>Questions</Label>
 										<Input
 											type="number"
 											min={1}
-											max={15}
+											max={20}
 											value={numQuestions}
 											onChange={(e) =>
 												setNumQuestions(
 													Math.max(
 														1,
-														Math.min(15, Number(e.target.value) || 1),
+														Math.min(20, Number(e.target.value) || 1),
 													),
 												)
 											}

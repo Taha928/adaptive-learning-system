@@ -4,6 +4,8 @@ import {
 	AlertTriangleIcon,
 	ArrowRightIcon,
 	BookOpenIcon,
+	BotIcon,
+	FlameIcon,
 	GraduationCapIcon,
 	ListChecksIcon,
 } from "lucide-react";
@@ -33,11 +35,13 @@ export function OrganizationOverview() {
 	const overviewQuery = trpc.organization.analytics.getOverview.useQuery();
 	const weakQuery = trpc.organization.analytics.getWeakTopics.useQuery();
 	const attemptsQuery = trpc.organization.quiz.listMyAttempts.useQuery({});
+	const streakQuery = trpc.organization.analytics.getStreak.useQuery();
 
 	if (
 		overviewQuery.isPending ||
 		weakQuery.isPending ||
-		attemptsQuery.isPending
+		attemptsQuery.isPending ||
+		streakQuery.isPending
 	) {
 		return <CenteredSpinner />;
 	}
@@ -45,9 +49,29 @@ export function OrganizationOverview() {
 	const overview = overviewQuery.data;
 	const weakTopics = weakQuery.data ?? [];
 	const recentAttempts = (attemptsQuery.data?.attempts ?? []).slice(0, 5);
+	const currentStreak = streakQuery.data?.currentStreak ?? 0;
+	const longestStreak = streakQuery.data?.longestStreak ?? 0;
 
 	return (
 		<div className="space-y-6">
+			<Card>
+				<CardHeader className="flex flex-row items-center gap-4 space-y-0">
+					<div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/40">
+						<FlameIcon className="size-6 text-orange-500" />
+					</div>
+					<div className="min-w-0">
+						<CardDescription>Current streak</CardDescription>
+						<CardTitle className="text-2xl">
+							{currentStreak} {currentStreak === 1 ? "day" : "days"}
+						</CardTitle>
+						<p className="mt-1 text-muted-foreground text-xs">
+							Keep learning daily to maintain your streak
+							{longestStreak > 0 && ` · Longest: ${longestStreak} days`}
+						</p>
+					</div>
+				</CardHeader>
+			</Card>
+
 			{weakTopics.length > 0 && (
 				<Alert variant="destructive">
 					<AlertTriangleIcon className="size-4" />
@@ -152,6 +176,12 @@ export function OrganizationOverview() {
 						<CardTitle className="text-base">Quick actions</CardTitle>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-2">
+						<Button asChild className="justify-start">
+							<Link href={`${base}/chatbot`}>
+								<BotIcon className="size-4" />
+								Ask the AI Tutor
+							</Link>
+						</Button>
 						<Button asChild variant="outline" className="justify-start">
 							<Link href={`${base}/courses`}>
 								<BookOpenIcon className="size-4" />

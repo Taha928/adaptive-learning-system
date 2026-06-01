@@ -3,6 +3,7 @@ import { CtaSection } from "@/components/marketing/sections/cta-section";
 import { FaqSection } from "@/components/marketing/sections/faq-section";
 import { PricingSection } from "@/components/marketing/sections/pricing-section";
 import { appConfig } from "@/config/app.config";
+import { studyNexPlans } from "@/lib/billing/studynex-plans";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -16,22 +17,22 @@ const pricingFaq = {
 		{
 			question: "Do I need a credit card to start?",
 			answer:
-				"No. The Free plan lets you build a course, run quizzes and chat with the tutor right away, no card required. Paid plans include a 14-day free trial.",
+				"No. The Free plan lets you build a course, run quizzes and chat with the AI tutor right away, no card required.",
 		},
 		{
-			question: "Is there a student discount?",
+			question: "When is the Pro plan available?",
 			answer:
-				"Scholar is already priced for students. If it's still a stretch, email us with your student ID and we'll sort you out. We keep a pool of free and discounted seats for learners who need them.",
+				"Pro is coming soon. It will unlock unlimited AI tutoring, advanced analytics, priority responses and full progress tracking for $9.99/month.",
 		},
 		{
-			question: "Can my whole class share one workspace?",
+			question: "What is the Institution plan?",
 			answer:
-				"Yes. Scholar includes shared class workspaces, so you can invite classmates and let an instructor track the cohort. Seats are billed per member.",
+				"Institution is for schools and teams: classroom management, student analytics, multiple users and a teacher dashboard. Contact us and we'll tailor it to your group.",
 		},
 		{
-			question: "Can I change or cancel my plan later?",
+			question: "How is StudyNex different from ChatGPT or Gemini?",
 			answer:
-				"Anytime. Upgrade, downgrade or cancel from your settings. Changes take effect immediately and we prorate the difference.",
+				"StudyNex is built specifically for education. You upload your own study materials (PDFs, notes, PPTs) and it turns them into a structured learning experience — generating quizzes, tracking progress and adapting to your content and performance, rather than acting as a general chatbot.",
 		},
 	],
 };
@@ -77,8 +78,9 @@ export default function PricingPage() {
 			{/* Pricing Cards */}
 			<PricingSection
 				headline=""
+				plans={studyNexPlans}
 				showFreePlans={true}
-				showEnterprisePlans={false}
+				showEnterprisePlans={true}
 				defaultInterval="month"
 			/>
 

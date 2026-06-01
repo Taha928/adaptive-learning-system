@@ -134,7 +134,6 @@ export const adminUserRouter = createTRPCRouter({
 					role: true,
 					banned: true,
 					onboardingComplete: true,
-					twoFactorEnabled: true,
 					createdAt: true,
 					updatedAt: true,
 				},
@@ -156,7 +155,6 @@ export const adminUserRouter = createTRPCRouter({
 					role: true,
 					banned: true,
 					onboardingComplete: true,
-					twoFactorEnabled: true,
 					createdAt: true,
 					updatedAt: true,
 				},
@@ -178,7 +176,6 @@ export const adminUserRouter = createTRPCRouter({
 						key: "onboardingComplete",
 						width: 20,
 					},
-					{ header: "2FA Enabled", key: "twoFactorEnabled", width: 15 },
 					{ header: "Created At", key: "createdAt", width: 25 },
 					{ header: "Updated At", key: "updatedAt", width: 25 },
 				];

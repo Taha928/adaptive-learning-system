@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { buildItemRows, generatePlanContent } from "@/lib/ai/study-plan";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { recordStreakActivity } from "@/lib/streak";
 import {
 	generatePlanSchema,
 	listStudyPlansSchema,
@@ -219,6 +220,9 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 				}
 				return fresh;
 			});
+
+			// Completing a study-plan item counts toward the learning streak.
+			await recordStreakActivity(ctx.user.id);
 
 			return updated;
 		}),

@@ -37,6 +37,8 @@ export type PromptInputProps = Omit<
 > & {
 	value?: string;
 	onChange?: (value: string) => void;
+	/** Allow submitting with empty text (e.g. when an attachment is present). */
+	allowEmpty?: boolean;
 	onSubmit: (
 		message: PromptInputMessage,
 		event: FormEvent<HTMLFormElement>,
@@ -47,6 +49,7 @@ export const PromptInput = ({
 	className,
 	value,
 	onChange,
+	allowEmpty = false,
 	onSubmit,
 	children,
 	...props
@@ -62,7 +65,7 @@ export const PromptInput = ({
 				return (formData.get("message") as string) || "";
 			})();
 
-		if (!text.trim()) return;
+		if (!allowEmpty && !text.trim()) return;
 
 		const result = onSubmit({ text }, event);
 

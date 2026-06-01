@@ -181,4 +181,6 @@ export interface PlanDisplay {
 	isFree?: boolean;
 	isEnterprise?: boolean;
 	recommended?: boolean;
+	/** Display-only plan that is not yet purchasable (renders a disabled "Coming soon" CTA). */
+	comingSoon?: boolean;
 }

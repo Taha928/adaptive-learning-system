@@ -1,38 +1,21 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type * as React from "react";
-import { OrganizationsGrid } from "@/components/organization/organizations-grid";
+import { ensureActiveWorkspace } from "@/lib/auth/server";
 
-export const metadata: Metadata = {
-	title: "Home",
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-import {
-	Page,
-	PageBody,
-	PageBreadcrumb,
-	PageHeader,
-	PagePrimaryBar,
-	PageTitle,
-} from "@/components/ui/custom/page";
+/**
+ * StudyNex presents a single-workspace experience. The dashboard root no longer
+ * shows an organization picker — it ensures the signed-in user has an active
+ * workspace and sends them straight into it.
+ */
+export default async function DashboardHomePage(): Promise<React.JSX.Element> {
+	const workspaceId = await ensureActiveWorkspace();
 
-export default function AccountPage(): React.JSX.Element {
-	return (
-		<Page>
-			<PageHeader>
-				<PagePrimaryBar>
-					<PageBreadcrumb segments={[{ label: "Home" }]} />
-				</PagePrimaryBar>
-			</PageHeader>
-			<PageBody>
-				<div className="p-4 pb-24 sm:px-6 sm:pt-6">
-					<div className="w-full space-y-4">
-						<div>
-							<PageTitle>Your Organizations</PageTitle>
-						</div>
-						<OrganizationsGrid />
-					</div>
-				</div>
-			</PageBody>
-		</Page>
-	);
+	if (!workspaceId) {
+		redirect("/auth/sign-in");
+	}
+
+	redirect("/dashboard/organization");
 }

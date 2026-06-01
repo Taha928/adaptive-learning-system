@@ -1,7 +1,8 @@
 "use client";
 
 import type * as React from "react";
-import { OrganizationSwitcher } from "@/components/organization/organization-switcher";
+import { AppSidebarHeader } from "@/components/app-sidebar-header";
+import { NexyHelpWidget } from "@/components/nexy-help-widget";
 import {
 	Sidebar,
 	SidebarContent,
@@ -35,7 +36,7 @@ export function SidebarLayout({
 			<SidebarProvider defaultOpen={defaultOpen} defaultWidth={defaultWidth}>
 				<Sidebar collapsible="icon">
 					<SidebarHeader>
-						<OrganizationSwitcher />
+						<AppSidebarHeader />
 					</SidebarHeader>
 					<SidebarContent className="flex flex-col overflow-hidden">
 						<div className="flex-1 overflow-hidden">{menuItems}</div>
@@ -48,6 +49,7 @@ export function SidebarLayout({
 				<SidebarInset id="skip" className="size-full overflow-hidden">
 					{children}
 				</SidebarInset>
+				<NexyHelpWidget />
 			</SidebarProvider>
 		</div>
 	);

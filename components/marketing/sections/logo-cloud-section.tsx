@@ -1,53 +1,33 @@
 "use client";
 
-import { InfiniteSlider } from "@/components/marketing/primitives/infinite-slider";
-import { ProgressiveBlur } from "@/components/marketing/primitives/progressive-blur";
+import { RotatingText } from "@/components/marketing/rotating-text";
 
-const subjects = [
-	"Organic Chemistry",
-	"Calculus",
-	"Anatomy & Physiology",
-	"Machine Learning",
-	"Constitutional Law",
-	"Macroeconomics",
-	"Data Structures",
-	"Microbiology",
-	"Statistics",
-	"World History",
-	"Pharmacology",
-	"Linear Algebra",
+// Item 13: rotate through the kinds of material StudyNex learns from, instead
+// of a scrolling list of subjects (item 12 — no old-school marquee).
+const sources = [
+	"Lecture Notes",
+	"Assignments",
+	"Past Papers",
+	"Textbooks",
+	"PPT Slides",
+	"Exam Preparation",
 ];
 
 export function LogoCloudSection() {
 	return (
-		<section className="border-t border-marketing-border/60 py-10">
-			<div className="mx-auto max-w-7xl px-6 lg:px-10">
-				<p className="mb-8 text-center text-sm font-medium uppercase tracking-widest text-marketing-fg-subtle">
-					Learners are mastering everything from
+		<section className="border-t border-marketing-border/60 py-12">
+			<div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 text-center lg:px-10">
+				<p className="font-medium text-marketing-fg-subtle text-sm uppercase tracking-widest">
+					Turn anything into a lesson
 				</p>
-			</div>
-			<div className="group relative mx-auto max-w-screen-2xl overflow-hidden px-4 sm:px-6 md:px-12">
-				<InfiniteSlider speedOnHover={20} speed={40} gap={56}>
-					{subjects.map((subject) => (
-						<span
-							key={subject}
-							className="whitespace-nowrap font-display text-xl text-marketing-fg-muted sm:text-2xl"
-						>
-							{subject}
-						</span>
-					))}
-				</InfiniteSlider>
-
-				<ProgressiveBlur
-					className="pointer-events-none absolute inset-y-0 left-0 h-full w-24"
-					direction="left"
-					blurIntensity={1}
-				/>
-				<ProgressiveBlur
-					className="pointer-events-none absolute inset-y-0 right-0 h-full w-24"
-					direction="right"
-					blurIntensity={1}
-				/>
+				<p className="font-display text-2xl text-marketing-fg sm:text-3xl">
+					Learn from your{" "}
+					<RotatingText
+						phrases={sources}
+						interval={1900}
+						className="text-marketing-accent"
+					/>
+				</p>
 			</div>
 		</section>
 	);

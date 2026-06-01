@@ -5,12 +5,15 @@ import NiceModal from "@ebay/nice-modal-react";
 import { TextStreamChatTransport } from "ai";
 import {
 	AlertCircleIcon,
+	FileTextIcon,
 	MoreHorizontalIcon,
 	PanelLeftCloseIcon,
 	PanelLeftIcon,
+	PaperclipIcon,
 	PlusIcon,
 	RefreshCwIcon,
 	SparklesIcon,
+	XIcon,
 } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +33,7 @@ import {
 import {
 	type ChatStatus,
 	PromptInput,
+	PromptInputButton,
 	PromptInputFooter,
 	PromptInputSubmit,
 	PromptInputTextarea,
@@ -73,6 +77,28 @@ interface ChatMessage {
 	isError?: boolean;
 }
 
+/** A file attached to the next message (sent to the tutor as a data URL). */
+interface ChatAttachment {
+	name: string;
+	mediaType: string;
+	url: string;
+}
+
+/** Accepted upload types: documents and images a student would share. */
+const ATTACHMENT_ACCEPT =
+	".pdf,.doc,.docx,.txt,.md,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024; // 12 MB per file
+const MAX_ATTACHMENTS = 6;
+
+function fileToDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(file);
+	});
+}
+
 interface AiChatProps {
 	organizationId: string;
 }
@@ -106,6 +132,43 @@ export function AiChat({ organizationId }: AiChatProps) {
 	const [selectedModel, setSelectedModel] =
 		useState<ChatModelId>(DEFAULT_CHAT_MODEL);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const handleFilesSelected = useCallback(async (fileList: FileList | null) => {
+		if (!fileList || fileList.length === 0) return;
+		const files = Array.from(fileList);
+
+		const accepted: ChatAttachment[] = [];
+		for (const file of files) {
+			if (file.size > MAX_ATTACHMENT_BYTES) {
+				toast.error(`"${file.name}" is too large (max 12 MB).`);
+				continue;
+			}
+			try {
+				const url = await fileToDataUrl(file);
+				accepted.push({
+					name: file.name,
+					mediaType: file.type || "application/octet-stream",
+					url,
+				});
+			} catch {
+				toast.error(`Could not read "${file.name}".`);
+			}
+		}
+
+		setAttachments((prev) => {
+			const merged = [...prev, ...accepted];
+			if (merged.length > MAX_ATTACHMENTS) {
+				toast.error(`You can attach up to ${MAX_ATTACHMENTS} files.`);
+			}
+			return merged.slice(0, MAX_ATTACHMENTS);
+		});
+	}, []);
+
+	const removeAttachment = useCallback((index: number) => {
+		setAttachments((prev) => prev.filter((_, i) => i !== index));
+	}, []);
 
 	// Guard against concurrent chat creation (prevents race condition on org switch/creation)
 	const isCreatingChatRef = useRef(false);
@@ -494,13 +557,22 @@ export function AiChat({ organizationId }: AiChatProps) {
 	}, [chats]);
 
 	const handleSendMessage = useCallback(
-		async (text: string) => {
-			if (!text.trim() || !chatId) return;
+		async (text: string, files: ChatAttachment[] = []) => {
+			if ((!text.trim() && files.length === 0) || !chatId) return;
+
+			// Note attached files in the persisted history so it's clear what the
+			// student shared (the file bytes themselves are not stored).
+			const persistedText =
+				files.length > 0
+					? `${text.trim()}${text.trim() ? "\n\n" : ""}📎 ${files
+							.map((f) => f.name)
+							.join(", ")}`.trim()
+					: text.trim();
 
 			const consolidated = getConsolidatedMessages(messages);
 			const updatedMessages = [
 				...consolidated,
-				{ role: "user" as const, content: text.trim() },
+				{ role: "user" as const, content: persistedText },
 			];
 
 			try {
@@ -509,10 +581,13 @@ export function AiChat({ organizationId }: AiChatProps) {
 					messages: updatedMessages,
 				});
 
-				sendMessage({
-					role: "user",
-					parts: [{ type: "text", text: text.trim() }],
-				});
+				sendMessage(
+					{
+						role: "user",
+						parts: [{ type: "text", text: persistedText }],
+					},
+					files.length > 0 ? { body: { attachments: files } } : undefined,
+				);
 			} catch {
 				toast.error("Failed to send message");
 			}
@@ -522,10 +597,11 @@ export function AiChat({ organizationId }: AiChatProps) {
 
 	const onSubmit = async () => {
 		const text = input.trim();
-		if (!text) return;
+		if (!text && attachments.length === 0) return;
 
-		await handleSendMessage(text);
+		await handleSendMessage(text, attachments);
 		setInput("");
+		setAttachments([]);
 	};
 
 	// Regenerate the last assistant response
@@ -917,17 +993,69 @@ export function AiChat({ organizationId }: AiChatProps) {
 					<div className="mx-auto w-full max-w-3xl">
 						<PromptInput
 							onSubmit={onSubmit}
+							allowEmpty
 							className="rounded-2xl border shadow-lg"
 						>
 							<PromptInputTextarea
 								value={input}
 								onValueChange={setInput}
 								disabled={!hasChat || isStreaming}
-								placeholder="Ask me anything..."
+								placeholder="Ask me anything, or attach a file..."
 								className="min-h-[52px] rounded-2xl border-0 px-4 py-3"
 							/>
+							<input
+								ref={fileInputRef}
+								type="file"
+								multiple
+								accept={ATTACHMENT_ACCEPT}
+								className="hidden"
+								onChange={(e) => {
+									void handleFilesSelected(e.target.files);
+									e.target.value = "";
+								}}
+							/>
+							{attachments.length > 0 && (
+								<div className="flex flex-wrap gap-2 px-3 pt-2">
+									{attachments.map((att, index) => {
+										const isImage = att.mediaType.startsWith("image/");
+										return (
+											<div
+												key={`${att.name}-${index}`}
+												className="flex max-w-[200px] items-center gap-2 rounded-lg border bg-muted/50 py-1 pr-1 pl-2"
+											>
+												{isImage ? (
+													// biome-ignore lint/performance/noImgElement: local data URL preview
+													<img
+														src={att.url}
+														alt={att.name}
+														className="size-6 shrink-0 rounded object-cover"
+													/>
+												) : (
+													<FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+												)}
+												<span className="truncate text-xs">{att.name}</span>
+												<button
+													type="button"
+													onClick={() => removeAttachment(index)}
+													className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+													aria-label={`Remove ${att.name}`}
+												>
+													<XIcon className="size-3.5" />
+												</button>
+											</div>
+										);
+									})}
+								</div>
+							)}
 							<PromptInputFooter className="px-3 pb-3">
 								<PromptInputTools>
+									<PromptInputButton
+										onClick={() => fileInputRef.current?.click()}
+										disabled={!hasChat || isStreaming}
+										aria-label="Attach a file"
+									>
+										<PaperclipIcon className="size-4" />
+									</PromptInputButton>
 									<Select
 										value={selectedModel}
 										onValueChange={(value) =>
@@ -979,7 +1107,9 @@ export function AiChat({ organizationId }: AiChatProps) {
 									) : (
 										<PromptInputSubmit
 											status={chatStatus}
-											disabled={!hasChat || !input.trim()}
+											disabled={
+												!hasChat || (!input.trim() && attachments.length === 0)
+											}
 											className="rounded-xl"
 										/>
 									)}

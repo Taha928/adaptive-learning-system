@@ -14,9 +14,10 @@ export const quizIdSchema = z.object({
 });
 
 // Generate an AI quiz from a topic (instructor only).
+// Length presets map to: Quick (5), Standard (10), Practice (20).
 export const generateFromTopicSchema = z.object({
 	topicId: z.string().uuid(),
-	numQuestions: z.number().int().min(1).max(15).default(5),
+	numQuestions: z.number().int().min(1).max(20).default(5),
 	difficulty: z.nativeEnum(QuizDifficulty).optional(),
 });
 
@@ -36,10 +37,17 @@ export const attemptIdSchema = z.object({
 });
 
 // A single answer submitted as part of an attempt.
+// `responseImage` is a data URL (e.g. a photo of a handwritten/diagram answer)
+// used for short/long questions — especially maths — and graded by the AI.
 export const submitAnswerSchema = z.object({
 	questionId: z.string().uuid(),
 	selectedOption: z.string().max(2000).optional(),
 	responseText: z.string().max(5000).optional(),
+	responseImage: z
+		.string()
+		.startsWith("data:image/")
+		.max(12_000_000)
+		.optional(),
 });
 
 // Submit a full attempt (the adaptive loop).

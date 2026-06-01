@@ -1,8 +1,11 @@
 import { env } from "@/lib/env";
 
 export const billingConfig = {
-	// Enable/disable billing feature
-	enabled: true,
+	// Enable/disable billing feature.
+	// StudyNex (FYP): billing/credits/seat-checkout are hidden. This disables the
+	// choose-plan gate, hides Subscription/Credits tabs, and forces free-plan limits.
+	// A simple read-only "plans" panel is shown separately (see settings).
+	enabled: false,
 	// Default currency
 	defaultCurrency: "usd",
 	// Plans configuration

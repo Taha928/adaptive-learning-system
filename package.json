@@ -118,6 +118,7 @@
 		"geist": "1.5.1",
 		"input-otp": "1.4.2",
 		"lucide-react": "0.562.0",
+		"mammoth": "^1.12.0",
 		"motion": "12.26.1",
 		"nanoid": "5.1.6",
 		"next": "16.1.1",

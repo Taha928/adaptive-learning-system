@@ -55,7 +55,7 @@ function PricingCard({
 		}
 		if (plan.isEnterprise) {
 			return (
-				<p className="mt-1 text-base leading-7 text-marketing-fg">Custom</p>
+				<p className="mt-1 text-base leading-7 text-marketing-fg">Contact us</p>
 			);
 		}
 		if (selectedPrice) {
@@ -93,6 +93,20 @@ function PricingCard({
 				</button>
 			);
 		}
+		if (plan.comingSoon) {
+			return (
+				<button
+					type="button"
+					disabled
+					className={cn(
+						"inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-full px-4 py-2 text-sm font-medium",
+						"cursor-not-allowed bg-marketing-card-hover text-marketing-fg-muted",
+					)}
+				>
+					Coming soon
+				</button>
+			);
+		}
 		if (plan.isEnterprise) {
 			return (
 				<Link
@@ -102,7 +116,7 @@ function PricingCard({
 						"bg-marketing-card-hover text-marketing-fg",
 					)}
 				>
-					Contact Sales
+					Contact Us
 				</Link>
 			);
 		}

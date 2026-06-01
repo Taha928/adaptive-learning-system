@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	Building2Icon,
-	CoinsIcon,
-	CreditCardIcon,
-	FileCog2Icon,
-	UsersIcon,
-} from "lucide-react";
+import { FileCog2Icon, LayoutDashboardIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
@@ -24,6 +18,7 @@ type MenuItem = {
 	label: string;
 	href: string;
 	icon: React.ComponentType<{ className?: string }>;
+	exactMatch?: boolean;
 };
 
 type MenuGroup = {
@@ -39,27 +34,18 @@ export function AdminMenuItems(): React.JSX.Element {
 			label: "Management",
 			items: [
 				{
-					label: "Users",
+					label: "Overview",
+					href: "/dashboard/admin",
+					icon: LayoutDashboardIcon,
+					exactMatch: true,
+				},
+				{
+					label: "Students",
 					href: "/dashboard/admin/users",
 					icon: UsersIcon,
 				},
 				{
-					label: "Organizations",
-					href: "/dashboard/admin/organizations",
-					icon: Building2Icon,
-				},
-				{
-					label: "Subscriptions",
-					href: "/dashboard/admin/subscriptions",
-					icon: CreditCardIcon,
-				},
-				{
-					label: "Credits",
-					href: "/dashboard/admin/credits",
-					icon: CoinsIcon,
-				},
-				{
-					label: "App Config",
+					label: "Settings",
 					href: "/dashboard/admin/app-config",
 					icon: FileCog2Icon,
 				},
@@ -70,6 +56,9 @@ export function AdminMenuItems(): React.JSX.Element {
 	const getIsActive = (item: MenuItem): boolean => {
 		if (pathname === item.href) {
 			return true;
+		}
+		if (item.exactMatch) {
+			return false;
 		}
 		return pathname.startsWith(`${item.href}/`);
 	};

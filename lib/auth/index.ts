@@ -7,7 +7,6 @@ import {
 	captcha,
 	openAPI,
 	organization,
-	twoFactor,
 	username,
 } from "better-auth/plugins";
 import { appConfig } from "@/config/app.config";
@@ -245,7 +244,6 @@ export const auth = betterAuth({
 			},
 		}),
 		openAPI(),
-		twoFactor(),
 	],
 	databaseHooks: {
 		session: {

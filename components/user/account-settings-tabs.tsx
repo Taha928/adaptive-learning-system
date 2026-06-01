@@ -15,7 +15,6 @@ import { ChangePasswordCard } from "@/components/user/change-password-card";
 import { ConnectedAccountsCard } from "@/components/user/connected-accounts-card";
 import { DeleteAccountCard } from "@/components/user/delete-account-card";
 import { SetPasswordCard } from "@/components/user/set-password-card";
-import { TwoFactorCard } from "@/components/user/two-factor-card";
 import { UserAvatarCard } from "@/components/user/user-avatar-card";
 import { authConfig } from "@/config/auth.config";
 
@@ -56,7 +55,6 @@ export function AccountSettingsTabs({
 			<UnderlinedTabsContent value="security">
 				<div className="space-y-4">
 					{userHasPassword ? <ChangePasswordCard /> : <SetPasswordCard />}
-					<TwoFactorCard hasCredentialAccount={userHasPassword} />
 					{authConfig.enableSocialLogin && <ConnectedAccountsCard />}
 				</div>
 			</UnderlinedTabsContent>

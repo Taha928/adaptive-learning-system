@@ -8,9 +8,9 @@ export const appConfig = {
 	// Contact information (displayed on contact page)
 	contact: {
 		enabled: true,
-		email: "hello@studynex.ai",
-		phone: "(415) 555-0142",
-		address: "Learning Sciences Lab, Berkeley, CA",
+		email: "studynexofficial@gmail.com",
+		phone: "+923119199934",
+		address: "Peshawar, Pakistan",
 	},
 	// Site sections - enable/disable major parts of the site
 	site: {
@@ -34,9 +34,8 @@ export const appConfig = {
 	},
 	// Organization settings
 	organizations: {
-		// Allow regular users to create organizations
-		// When false, only admins can create organizations
-		allowUserCreation: true,
+		// StudyNex is single-workspace: users never create/switch organizations.
+		allowUserCreation: false,
 	},
 	// Pagination defaults
 	pagination: {

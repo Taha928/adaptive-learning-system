@@ -7,6 +7,7 @@ import {
 	LaptopIcon,
 	MoonIcon,
 	MoreHorizontalIcon,
+	ShieldIcon,
 	SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -271,6 +272,18 @@ export function UserDropDownMenu(
 							</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
+								{user.role === "admin" && (
+									<>
+										<DropdownMenuItem
+											className="cursor-pointer"
+											onClick={() => router.push("/dashboard/admin")}
+										>
+											Admin Panel
+											<ShieldIcon className="ml-auto size-4 text-muted-foreground" />
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+									</>
+								)}
 								<DropdownMenuItem
 									className="cursor-pointer"
 									onClick={handleNavigateToProfile}

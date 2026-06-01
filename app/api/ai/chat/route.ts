@@ -1,5 +1,5 @@
 import { PerformanceEventType } from "@prisma/client";
-import { streamText } from "ai";
+import { type ModelMessage, streamText } from "ai";
 import { z } from "zod/v4";
 import {
 	type ChatModelId,
@@ -12,6 +12,7 @@ import { TUTOR_SYSTEM_PROMPT, tutorModel } from "@/lib/ai/tutor";
 import { assertUserIsOrgMember, getSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { recordStreakActivity } from "@/lib/streak";
 
 export const maxDuration = 30;
 
@@ -22,6 +23,20 @@ const ALLOWED_MODEL_IDS = chatModels.map((m) => m.id);
 function isAllowedModel(model: string): model is ChatModelId {
 	return ALLOWED_MODEL_IDS.includes(model as ChatModelId);
 }
+
+// A single file attached to the latest user message. `url` is a data URL
+// (`data:<mediaType>;base64,<...>`). We cap the size to keep request bodies sane.
+const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024; // ~12 MB per file
+const attachmentSchema = z.object({
+	name: z.string().max(255),
+	mediaType: z.string().max(128),
+	url: z
+		.string()
+		.startsWith("data:")
+		.max(Math.ceil((MAX_ATTACHMENT_BYTES * 4) / 3) + 1024),
+});
+
+export type ChatAttachment = z.infer<typeof attachmentSchema>;
 
 // Input validation schema
 const chatRequestSchema = z.object({
@@ -36,7 +51,83 @@ const chatRequestSchema = z.object({
 	model: z.string().optional(),
 	chatId: z.string().uuid().optional(),
 	organizationId: z.string().uuid().optional(),
+	attachments: z.array(attachmentSchema).max(6).optional(),
 });
+
+/** Extract the base64 payload from a `data:` URL. */
+function dataUrlToBase64(url: string): string {
+	const comma = url.indexOf(",");
+	return comma === -1 ? "" : url.slice(comma + 1);
+}
+
+/**
+ * Turn the latest user message into a multimodal content array so the Gemini
+ * tutor can actually read attached files:
+ *   • images & PDFs are passed through natively (Gemini reads/【OCRs】 them),
+ *   • DOCX is converted to text with mammoth,
+ *   • plain text is inlined,
+ *   • anything else is mentioned by name so the tutor can ask for a better format.
+ */
+async function buildUserContent(
+	text: string,
+	attachments: ChatAttachment[],
+): Promise<Array<Record<string, unknown>>> {
+	const parts: Array<Record<string, unknown>> = [];
+	if (text) {
+		parts.push({ type: "text", text });
+	}
+
+	for (const att of attachments) {
+		const mediaType = att.mediaType.toLowerCase();
+		try {
+			if (mediaType.startsWith("image/")) {
+				parts.push({ type: "image", image: att.url });
+			} else if (mediaType === "application/pdf") {
+				parts.push({
+					type: "file",
+					data: att.url,
+					mediaType: "application/pdf",
+				});
+			} else if (mediaType.startsWith("text/")) {
+				const decoded = Buffer.from(
+					dataUrlToBase64(att.url),
+					"base64",
+				).toString("utf8");
+				parts.push({
+					type: "text",
+					text: `\n\n[Attached file "${att.name}"]:\n${decoded.slice(0, 20_000)}`,
+				});
+			} else if (
+				mediaType ===
+				"application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+			) {
+				const mammoth = await import("mammoth");
+				const buffer = Buffer.from(dataUrlToBase64(att.url), "base64");
+				const { value } = await mammoth.extractRawText({ buffer });
+				parts.push({
+					type: "text",
+					text: `\n\n[Attached document "${att.name}"]:\n${value.slice(0, 20_000)}`,
+				});
+			} else {
+				parts.push({
+					type: "text",
+					text: `\n\n[The student attached "${att.name}" (${att.mediaType}), which can't be read directly. Ask them to share it as a PDF, image, or text if its contents are needed.]`,
+				});
+			}
+		} catch (error) {
+			logger.warn(
+				{ error, name: att.name, mediaType: att.mediaType },
+				"Failed to process chat attachment",
+			);
+			parts.push({
+				type: "text",
+				text: `\n\n[Attachment "${att.name}" could not be read.]`,
+			});
+		}
+	}
+
+	return parts;
+}
 
 // Standard error response helper
 function errorResponse(
@@ -71,6 +162,7 @@ export async function POST(req: Request) {
 	let chatId: string | undefined;
 	let organizationId: string | undefined;
 	let selectedModel: ChatModelId = DEFAULT_CHAT_MODEL;
+	let attachments: ChatAttachment[] = [];
 
 	try {
 		const body = await req.json();
@@ -78,6 +170,7 @@ export async function POST(req: Request) {
 
 		chatId = parsed.chatId;
 		organizationId = parsed.organizationId;
+		attachments = parsed.attachments ?? [];
 
 		// Normalize messages to ensure proper content string for streamText.
 		// The frontend might use 'parts' instead of 'content' for multimodal/edit support
@@ -202,10 +295,30 @@ export async function POST(req: Request) {
 		}
 	}
 
+	// If the latest turn carried attachments, rebuild the final user message as a
+	// multimodal content array so Gemini can actually read the files.
+	let modelMessages: Array<{
+		role: "user" | "assistant" | "system";
+		content: string | Array<Record<string, unknown>>;
+	}> = messages;
+
+	if (attachments.length > 0) {
+		const lastUserIndex = messages.findLastIndex((m) => m.role === "user");
+		if (lastUserIndex !== -1) {
+			const content = await buildUserContent(
+				messages[lastUserIndex]!.content,
+				attachments,
+			);
+			modelMessages = messages.map((m, i) =>
+				i === lastUserIndex ? { role: m.role, content } : m,
+			);
+		}
+	}
+
 	const result = streamText({
 		model: tutorModel(selectedModel),
 		system: systemPrompt,
-		messages,
+		messages: modelMessages as unknown as ModelMessage[],
 		async onFinish({ text }) {
 			// Log the interaction for analytics (SRS R3). Best-effort: a logging
 			// failure must never break the chat response.
@@ -224,6 +337,8 @@ export async function POST(req: Request) {
 						"Failed to log chatAsked interaction",
 					);
 				}
+				// Count this conversation toward the user's learning streak.
+				await recordStreakActivity(session.user.id);
 			}
 
 			// Save the assistant's response to the database

@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import type * as React from "react";
 import { OnboardingProfileStep } from "@/components/onboarding/onboarding-profile-step";
+import { StudyNexMascot } from "@/components/studynex-mascot";
 import {
 	Card,
 	CardContent,
@@ -48,8 +49,9 @@ export function OnboardingCard(): React.JSX.Element {
 	return (
 		<Card className="w-full border-transparent px-4 py-8 dark:border-border">
 			<CardHeader>
+				<StudyNexMascot className="mb-2 size-14" />
 				<CardTitle className="text-base lg:text-lg">
-					Set up your account
+					Welcome to StudyNex
 				</CardTitle>
 				<CardDescription>
 					Just a few quick steps to get you started.

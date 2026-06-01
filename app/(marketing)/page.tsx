@@ -1,4 +1,5 @@
 import { CtaSection } from "@/components/marketing/sections/cta-section";
+import { DemoVideoSection } from "@/components/marketing/sections/demo-video-section";
 import { FaqSection } from "@/components/marketing/sections/faq-section";
 import { FeaturesSection } from "@/components/marketing/sections/features-section";
 import { HeroSection } from "@/components/marketing/sections/hero-section";
@@ -6,6 +7,7 @@ import { HowItWorksSection } from "@/components/marketing/sections/how-it-works-
 import { LogoCloudSection } from "@/components/marketing/sections/logo-cloud-section";
 import { PricingSection } from "@/components/marketing/sections/pricing-section";
 import { appConfig } from "@/config/app.config";
+import { studyNexPlans } from "@/lib/billing/studynex-plans";
 
 function OrganizationJsonLd() {
 	const jsonLd = {
@@ -72,9 +74,9 @@ export default function HomePage() {
 					"No. The free plan lets you create a course, run quizzes and chat with the tutor right away. Upgrade only when you want more courses and unlimited tutor messages.",
 			},
 			{
-				question: "Can my class or study group use it together?",
+				question: "How is StudyNex different from ChatGPT or Gemini?",
 				answer:
-					"Yes. Create a shared workspace, invite classmates, and instructors can track how the whole cohort is progressing topic by topic.",
+					"StudyNex is built specifically for education and personalized learning. Unlike general-purpose AI tools, it lets you upload your own study materials (PDFs, notes, PPTs) and turns them into a structured learning experience — generating quizzes, tracking progress, and adapting to your content and performance, rather than acting as a general chatbot.",
 			},
 			{
 				question: "Is my coursework private?",
@@ -106,8 +108,13 @@ export default function HomePage() {
 			<LogoCloudSection />
 			<FeaturesSection />
 			<HowItWorksSection />
-			<PricingSection headline="Pricing that fits a student budget." />
+			<PricingSection
+				headline="Pricing that fits a student budget."
+				plans={studyNexPlans}
+				showEnterprisePlans={true}
+			/>
 			<FaqSection content={faqContent} />
+			<DemoVideoSection />
 			<CtaSection content={ctaContent} />
 		</>
 	);
