@@ -84,9 +84,14 @@ interface ChatAttachment {
 	url: string;
 }
 
-/** Accepted upload types: documents and images a student would share. */
+/**
+ * Accepted upload types — kept in sync with what the chat route can actually
+ * read (images, PDF, DOCX, plain text). Formats the server can't extract (e.g.
+ * legacy .doc, .ppt) are intentionally excluded so the picker never accepts a
+ * file the tutor would silently ignore.
+ */
 const ATTACHMENT_ACCEPT =
-	".pdf,.doc,.docx,.txt,.md,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	".pdf,.docx,.txt,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024; // 12 MB per file
 const MAX_ATTACHMENTS = 6;
 

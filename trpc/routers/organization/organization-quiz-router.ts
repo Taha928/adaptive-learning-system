@@ -688,19 +688,35 @@ export const organizationQuizRouter = createTRPCRouter({
 							isCorrect = aiGrade.isCorrect;
 							aiFeedback = aiGrade.feedback;
 						} else {
-							// Fallback when AI grading was unavailable: exact match for
-							// short answers; long answers can't be string-matched.
-							isCorrect =
+							// AI grading was unavailable even after a retry. Don't silently
+							// zero a real answer: keep the cheap exact-match for short
+							// answers, but for long answers and image-only submissions
+							// (which can't be string-matched) give the benefit of the doubt
+							// and flag that it wasn't auto-graded, rather than penalising the
+							// student for our outage.
+							const hasAnswer = !!(responseText?.trim() || responseImage);
+							if (
 								question.type === QuestionType.shortAnswer &&
-								responseText != null &&
-								responseText.trim().toLowerCase() ===
+								responseText != null
+							) {
+								isCorrect =
+									responseText.trim().toLowerCase() ===
 									question.correctAnswer.trim().toLowerCase();
+							} else if (hasAnswer) {
+								isCorrect = true;
+								aiFeedback =
+									"Automatic grading was temporarily unavailable, so this answer was marked as complete — compare it with the model answer to check yourself.";
+							} else {
+								isCorrect = false;
+							}
 						}
 						yourAnswer =
 							responseText ?? (responseImage ? "[Image answer]" : null);
 					} else {
-						// MCQ / true-false: compare the chosen value.
-						const candidate = selectedOption ?? responseText;
+						// MCQ / true-false: only the selected option is graded. Free-typed
+						// responseText is ignored here so a client cannot submit an answer
+						// that was never one of the presented options.
+						const candidate = selectedOption;
 						isCorrect =
 							candidate != null &&
 							candidate.trim().toLowerCase() ===

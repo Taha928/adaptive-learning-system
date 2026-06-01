@@ -5,7 +5,6 @@ import type * as React from "react";
 import { CreditsSettingsTab } from "@/components/billing/credits-settings-tab";
 import { PlansOverview } from "@/components/billing/plans-overview";
 import { SubscriptionSettingsTab } from "@/components/billing/subscription-settings-tab";
-import { DeleteOrganizationCard } from "@/components/organization/delete-organization-card";
 import { OrganizationChangeNameCard } from "@/components/organization/organization-change-name-card";
 import { OrganizationLogoCard } from "@/components/organization/organization-logo-card";
 import {
@@ -16,13 +15,7 @@ import {
 } from "@/components/ui/custom/underlined-tabs";
 import { billingConfig } from "@/config/billing.config";
 
-const tabValues = [
-	"general",
-	"plan",
-	"members",
-	"subscription",
-	"credits",
-] as const;
+const tabValues = ["general", "plan"] as const;
 type TabValue = (typeof tabValues)[number];
 
 type OrganizationSettingsTabsProps = {
@@ -59,7 +52,6 @@ export function OrganizationSettingsTabs({
 				<div className="space-y-4">
 					<OrganizationLogoCard />
 					<OrganizationChangeNameCard />
-					<DeleteOrganizationCard />
 				</div>
 			</UnderlinedTabsContent>
 			<UnderlinedTabsContent value="plan">

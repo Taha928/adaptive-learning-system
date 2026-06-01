@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import type * as React from "react";
 import { OrganizationMenuItems } from "@/components/organization/organization-menu-items";
 import { SidebarLayout } from "@/components/sidebar-layout";
-import { getOrganizationById, getSession } from "@/lib/auth/server";
+import {
+	ensureActiveWorkspace,
+	getOrganizationById,
+	getSession,
+} from "@/lib/auth/server";
 import { shouldRedirectToChoosePlan } from "@/lib/billing/guards";
 import { OrganizationProviders } from "./providers";
 
@@ -24,16 +28,19 @@ export default async function OrganizationLayout({
 		redirect("/auth/sign-in");
 	}
 
-	// If no active organization, redirect to dashboard to select one
-	const activeOrganizationId = session.session.activeOrganizationId;
+	// Single-workspace model: if the session has no active workspace yet (or its
+	// write didn't land), self-heal here by ensuring/activating one and loading
+	// it directly by id. This avoids a redirect ping-pong with /dashboard.
+	const activeOrganizationId =
+		session.session.activeOrganizationId ?? (await ensureActiveWorkspace());
 	if (!activeOrganizationId) {
-		redirect("/dashboard");
+		redirect("/auth/sign-in");
 	}
 
 	// Get the active organization details
 	const organization = await getOrganizationById(activeOrganizationId);
 	if (!organization) {
-		// Active organization no longer exists, redirect to dashboard
+		// Workspace genuinely missing — fall back to the dashboard entry point.
 		redirect("/dashboard");
 	}
 

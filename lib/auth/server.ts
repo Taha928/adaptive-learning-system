@@ -137,13 +137,21 @@ export const ensureActiveWorkspace = cache(async (): Promise<string | null> => {
 	}
 
 	if (organizationId) {
-		try {
-			await auth.api.setActiveOrganization({
-				body: { organizationId },
-				headers: requestHeaders,
-			});
-		} catch (error) {
-			logger.error({ error, organizationId }, "Failed to set active workspace");
+		// Retry transient session-write failures so callers don't bounce between
+		// /dashboard and /dashboard/organization in a redirect loop.
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				await auth.api.setActiveOrganization({
+					body: { organizationId },
+					headers: requestHeaders,
+				});
+				break;
+			} catch (error) {
+				logger.error(
+					{ error, organizationId, attempt },
+					"Failed to set active workspace",
+				);
+			}
 		}
 	}
 

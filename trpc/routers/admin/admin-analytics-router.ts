@@ -4,7 +4,12 @@ import { createTRPCRouter, protectedAdminProcedure } from "@/trpc/init";
 /** Platform-level analytics for the admin overview (item 7). */
 export const adminAnalyticsRouter = createTRPCRouter({
 	getStats: protectedAdminProcedure.query(async () => {
-		const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+		// lastActiveDate is a date-only (@db.Date) column stored at midnight UTC,
+		// so the 7-day window boundary must also be a midnight-UTC date — otherwise
+		// the current time-of-day shrinks the window to ~6 days and undercounts.
+		const sevenDaysAgo = new Date();
+		sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+		sevenDaysAgo.setUTCHours(0, 0, 0, 0);
 
 		const [
 			totalStudents,

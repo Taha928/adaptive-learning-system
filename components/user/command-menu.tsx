@@ -11,7 +11,6 @@ import {
 	ShieldIcon,
 	UserIcon,
 	UserSearchIcon,
-	UsersIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
@@ -76,13 +75,8 @@ const organizationNavItems: NavItem[] = [
 		icon: SettingsIcon,
 	},
 	{
-		title: "Members",
-		href: "/dashboard/organization/settings?tab=members",
-		icon: UsersIcon,
-	},
-	{
-		title: "Subscription",
-		href: "/dashboard/organization/settings?tab=subscription",
+		title: "Plan",
+		href: "/dashboard/organization/settings?tab=plan",
 		icon: CreditCardIcon,
 	},
 ];

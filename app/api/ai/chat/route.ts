@@ -27,6 +27,7 @@ function isAllowedModel(model: string): model is ChatModelId {
 // A single file attached to the latest user message. `url` is a data URL
 // (`data:<mediaType>;base64,<...>`). We cap the size to keep request bodies sane.
 const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024; // ~12 MB per file
+const MAX_TOTAL_ATTACHMENT_BYTES = 24 * 1024 * 1024; // ~24 MB across all files
 const attachmentSchema = z.object({
 	name: z.string().max(255),
 	mediaType: z.string().max(128),
@@ -211,6 +212,20 @@ export async function POST(req: Request) {
 	} catch (error) {
 		logger.warn({ error }, "Invalid chat request body");
 		return errorResponse("invalid_request", "Invalid request body", 400);
+	}
+
+	// Per-file caps alone allow 6 × 12MB; reject oversized aggregate payloads.
+	// Approximate decoded byte size from the base64 data-URL length.
+	const totalAttachmentBytes = attachments.reduce(
+		(sum, a) => sum + Math.floor((a.url.length * 3) / 4),
+		0,
+	);
+	if (totalAttachmentBytes > MAX_TOTAL_ATTACHMENT_BYTES) {
+		return errorResponse(
+			"payload_too_large",
+			"Your attachments are too large. Please attach fewer or smaller files.",
+			413,
+		);
 	}
 
 	// Verify user is a member of the organization before allowing access
