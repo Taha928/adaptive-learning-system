@@ -62,9 +62,9 @@ function dataUrlToBase64(url: string): string {
 }
 
 /**
- * Turn the latest user message into a multimodal content array so the Gemini
+ * Turn the latest user message into a multimodal content array so the AI
  * tutor can actually read attached files:
- *   • images & PDFs are passed through natively (Gemini reads/【OCRs】 them),
+ *   • images & PDFs are passed through natively (the model reads/OCRs them),
  *   • DOCX is converted to text with mammoth,
  *   • plain text is inlined,
  *   • anything else is mentioned by name so the tutor can ask for a better format.
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
 	}
 
 	// If the latest turn carried attachments, rebuild the final user message as a
-	// multimodal content array so Gemini can actually read the files.
+	// multimodal content array so the model can actually read the files.
 	let modelMessages: Array<{
 		role: "user" | "assistant" | "system";
 		content: string | Array<Record<string, unknown>>;

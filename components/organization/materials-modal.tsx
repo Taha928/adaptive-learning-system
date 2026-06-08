@@ -184,7 +184,7 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 													<FormControl>
 														<Textarea
 															placeholder="Paste notes here, or upload a PDF above to fill this automatically…"
-															className="h-64 max-h-[50vh] resize-none overflow-y-auto font-mono text-xs"
+															className="h-44 max-h-[38vh] resize-none overflow-y-auto font-mono text-xs"
 															{...field}
 															value={field.value ?? ""}
 														/>
@@ -197,7 +197,9 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 								</div>
 							</ScrollArea>
 
-							<SheetFooter className="flex-row justify-end gap-2 border-t">
+							{/* Sticky, opaque footer so the submit button is always visible and
+							    clickable, even after pasting/extracting long content. */}
+							<SheetFooter className="sticky bottom-0 z-10 flex-row justify-end gap-2 border-t bg-background p-4 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.18)]">
 								<Button
 									type="button"
 									variant="outline"
@@ -208,6 +210,8 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 								</Button>
 								<Button
 									type="submit"
+									size="lg"
+									className="px-6 font-semibold"
 									disabled={isPending || isExtracting}
 									loading={isPending}
 								>

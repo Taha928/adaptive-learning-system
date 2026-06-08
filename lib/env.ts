@@ -34,11 +34,19 @@ export const env = createEnv({
 		SENTRY_PROJECT: z.string().optional(),
 		SENTRY_AUTH_TOKEN: z.string().optional(),
 
-		// Storage / S3
+		// Storage / S3 (legacy — superseded by Supabase Storage)
 		S3_ACCESS_KEY_ID: z.string().optional(),
 		S3_SECRET_ACCESS_KEY: z.string().optional(),
 		S3_ENDPOINT: z.string().optional(),
 		S3_REGION: z.string().optional(),
+
+		// Storage / Supabase (server-side secrets — NEVER exposed to the client)
+		// SUPABASE_URL may be the bare project URL or include a path like
+		// `/rest/v1/`; it is normalized in lib/supabase.ts before use.
+		SUPABASE_URL: z.string().url().optional(),
+		SUPABASE_ANON_KEY: z.string().optional(),
+		// Full-access key. Bypasses RLS. Server-only — must never reach the bundle.
+		SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
 		// Stripe / Billing
 		STRIPE_SECRET_KEY: z.string().optional(),
@@ -71,6 +79,11 @@ export const env = createEnv({
 		NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 		NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 		NEXT_PUBLIC_IMAGES_BUCKET_NAME: z.string().optional(),
+
+		// Supabase (client-safe). The anon key is designed to be public and is
+		// protected by Row-Level Security; never put the service-role key here.
+		NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+		NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
 
 		// Stripe / Billing (public)
 		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
@@ -122,6 +135,9 @@ export const env = createEnv({
 		S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
 		S3_ENDPOINT: process.env.S3_ENDPOINT,
 		S3_REGION: process.env.S3_REGION,
+		SUPABASE_URL: process.env.SUPABASE_URL,
+		SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+		SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
 		STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 		STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 		TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
@@ -136,6 +152,8 @@ export const env = createEnv({
 		NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 		NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 		NEXT_PUBLIC_IMAGES_BUCKET_NAME: process.env.NEXT_PUBLIC_IMAGES_BUCKET_NAME,
+		NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+		NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
 			process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 		NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,

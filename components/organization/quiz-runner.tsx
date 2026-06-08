@@ -160,7 +160,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 					<CardHeader>
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div className="flex items-center gap-3">
-								<StudyNexMascot className="size-12 shrink-0" />
+								<StudyNexMascot animated className="size-16 shrink-0" />
 								<div>
 									<CardTitle className="text-2xl">
 										{result.percentage}%

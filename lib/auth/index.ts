@@ -88,29 +88,46 @@ export const auth = betterAuth({
 	},
 	emailAndPassword: {
 		enabled: true,
-		// If signup is enabled, we can't auto sign in the user, as the email is not verified yet.
+		// In production, require email verification before sign-in.
+		// In development, skip verification so you can sign in immediately after signup.
 		autoSignIn: false,
-		requireEmailVerification: true,
+		requireEmailVerification: env.NODE_ENV === "production",
 		minPasswordLength: authConfig.minimumPasswordLength,
 		sendResetPassword: async ({ user, url }, _request) => {
-			await sendPasswordResetEmail({
-				recipient: user.email,
-				appName: appConfig.appName,
-				name: user.name,
-				resetPasswordLink: url,
-			});
+			try {
+				await sendPasswordResetEmail({
+					recipient: user.email,
+					appName: appConfig.appName,
+					name: user.name,
+					resetPasswordLink: url,
+				});
+			} catch (error) {
+				logger.error(
+					{ error },
+					"Failed to send password reset email - check RESEND_API_KEY",
+				);
+				if (env.NODE_ENV === "production") throw error;
+			}
 		},
 	},
 	emailVerification: {
-		sendOnSignUp: true,
+		sendOnSignUp: env.NODE_ENV === "production",
 		autoSignInAfterVerification: true,
 		expiresIn: authConfig.verificationExpiresIn,
 		sendVerificationEmail: async ({ user: { email, name }, url }, _request) => {
-			await sendVerifyEmailAddressEmail({
-				recipient: email,
-				name,
-				verificationLink: url,
-			});
+			try {
+				await sendVerifyEmailAddressEmail({
+					recipient: email,
+					name,
+					verificationLink: url,
+				});
+			} catch (error) {
+				logger.error(
+					{ error },
+					"Failed to send verification email - check RESEND_API_KEY",
+				);
+				if (env.NODE_ENV === "production") throw error;
+			}
 		},
 	},
 	socialProviders: {

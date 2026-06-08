@@ -47,7 +47,7 @@ export function DemoVideoSection() {
 							</video>
 						) : (
 							<div className="flex aspect-video w-full flex-col items-center justify-center gap-4 bg-marketing-bg-elevated text-center">
-								<StudyNexMascot className="size-20" />
+								<StudyNexMascot animated className="size-28" />
 								<div className="flex items-center gap-2 text-marketing-fg-muted">
 									<PlayCircleIcon className="size-5" />
 									<span className="font-medium text-sm">

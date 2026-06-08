@@ -1,0 +1,157 @@
+[WARN] Unsupported engine: wanted: {"node":"22.21.1"} (current: {"node":"v22.22.3","pnpm":"11.5.0"})
+$ prisma generate && next dev
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+┌─────────────────────────────────────────────────────────┐
+│  Update available 7.2.0 -> 7.8.0                        │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (v7.2.0) to .\node_modules\.pnpm\@prisma+client@7.2.0_prisma_cc6a828049883b98ef5d9d9c4971082c\node_modules\@prisma\client in 964ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+Starting content-collections content-collections.ts
+[MDX] generated files in 53.99369999999999ms
+[MDX] started dev server
+build started ...
+... finished build of 4 collections and 19 documents in 355ms
+start watching ...
+▲ Next.js 16.1.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.31.32.1:3000
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+
+✓ Starting...
+✓ Ready in 18.6s
+○ Compiling / ...
+ GET / 200 in 16.1s (compile: 8.9s, proxy.ts: 1419ms, render: 5.7s)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ POST /api/auth/sign-in/social 200 in 18.9s (compile: 8.9s, proxy.ts: 9.3s, render: 779ms)
+ GET /api/trpc/user.getSession?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 6.7s (compile: 6.6s, proxy.ts: 17ms, render: 73ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 3.1s (compile: 101ms, proxy.ts: 81ms, render: 2.9s)
+ GET /api/trpc/user.getSession,organization.course.get,organization.material.list,organization.quiz.listTopics,organization.quiz.list?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%221%22%3A%7B%22json%22%3A%7B%22id%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%223%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%224%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%2C%22includeAdaptive%22%3Afalse%7D%7D%7D 200 in 5.0s (compile: 110ms, proxy.ts: 84ms, render: 4.8s)
+ GET /api/trpc/organization.course.get,organization.material.list,organization.quiz.listTopics?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22id%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%221%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%7D 200 in 3.8s (compile: 153ms, proxy.ts: 76ms, render: 3.6s)
+ GET /api/trpc/organization.quiz.list?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%2C%22includeAdaptive%22%3Afalse%7D%7D%7D 200 in 635ms (compile: 152ms, proxy.ts: 147ms, render: 337ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 362ms (compile: 186ms, proxy.ts: 92ms, render: 84ms)
+ GET /api/trpc/user.getSession?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 477ms (compile: 215ms, proxy.ts: 32ms, render: 230ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 548ms (compile: 248ms, proxy.ts: 112ms, render: 188ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 477ms (compile: 60ms, proxy.ts: 149ms, render: 267ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 735ms (compile: 504ms, proxy.ts: 29ms, render: 202ms)
+ GET /api/trpc/user.getSession?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 914ms (compile: 452ms, proxy.ts: 235ms, render: 228ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 3.0s (compile: 1747ms, proxy.ts: 199ms, render: 1099ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 4.7s (compile: 2.7s, proxy.ts: 169ms, render: 1821ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 8.4s (compile: 305ms, proxy.ts: 1785ms, render: 6.3s)
+ GET /dashboard 200 in 12.9s (compile: 1060ms, proxy.ts: 904ms, render: 10.9s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 6.9s (compile: 530ms, proxy.ts: 6.3s, render: 100ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 491ms (compile: 282ms, proxy.ts: 111ms, render: 98ms)
+ GET /dashboard 200 in 14.0s (compile: 863ms, proxy.ts: 898ms, render: 12.2s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 101ms (compile: 40ms, proxy.ts: 18ms, render: 42ms)
+ GET /dashboard 200 in 8.9s (compile: 45ms, proxy.ts: 7.2s, render: 1618ms)
+ GET /dashboard 200 in 2.3s (compile: 36ms, proxy.ts: 891ms, render: 1370ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 169ms (compile: 62ms, proxy.ts: 36ms, render: 71ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 178ms (compile: 62ms, proxy.ts: 42ms, render: 73ms)
+○ Compiling /dashboard/settings ...
+ GET /dashboard 307 in 3.6s (compile: 25ms, proxy.ts: 138ms, render: 3.4s)
+ GET /dashboard 307 in 4.0s (compile: 45ms, proxy.ts: 233ms, render: 3.7s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 327ms (compile: 43ms, proxy.ts: 213ms, render: 70ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 29.8s (compile: 9.2s, proxy.ts: 3.4s, render: 17.3s)
+ GET /dashboard/organization 200 in 10.6s (compile: 645ms, proxy.ts: 250ms, render: 9.7s)
+ GET /dashboard/organization 200 in 12.3s (compile: 35ms, proxy.ts: 428ms, render: 11.9s)
+ GET /api/trpc/organization.course.get,organization.material.list,organization.quiz.listTopics?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22id%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%221%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%7D 200 in 3.0s (compile: 57ms, proxy.ts: 10ms, render: 2.9s)
+ GET /api/trpc/organization.quiz.list?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%2C%22includeAdaptive%22%3Afalse%7D%7D%7D 200 in 340ms (compile: 17ms, proxy.ts: 18ms, render: 305ms)
+ GET /api/trpc/organization.analytics.getOverview,organization.analytics.getWeakTopics,organization.quiz.listMyAttempts,organization.analytics.getStreak?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%221%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%7D%7D%2C%223%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 604ms (compile: 47ms, proxy.ts: 11ms, render: 547ms)
+ GET /api/trpc/organization.analytics.getOverview,organization.analytics.getWeakTopics,organization.quiz.listMyAttempts,organization.analytics.getStreak?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%221%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%7D%7D%2C%223%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 539ms (compile: 32ms, proxy.ts: 10ms, render: 497ms)
+✓ Compiled in 5.4s
+✓ Compiled in 843ms
+✓ Compiled in 967ms
+✓ Finished filesystem cache database compaction in 16.0s
+✓ Compiled in 2.1s
+✓ Compiled in 1289ms
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+✓ Compiled in 2.8s
+ GET / 200 in 6.6s (compile: 1811ms, proxy.ts: 12ms, render: 4.8s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 9.2s (compile: 134ms, proxy.ts: 17ms, render: 9.1s)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET /api/auth/get-session?disableCookieCache=true 200 in 6.9s (compile: 6.1s, proxy.ts: 156ms, render: 712ms)
+ GET / 200 in 11.9s (compile: 2.3s, proxy.ts: 162ms, render: 9.4s)
+ GET / 200 in 7.0s (compile: 1101ms, proxy.ts: 225ms, render: 5.7s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 26.2s (compile: 2.2s, proxy.ts: 9.4s, render: 14.6s)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+○ Compiling /_not-found/page ...
+ GET /api/auth/get-session?disableCookieCache=true 200 in 2.2s (compile: 1213ms, proxy.ts: 463ms, render: 528ms)
+ GET / 404 in 12.5s (compile: 8.6s, proxy.ts: 125ms, render: 3.9s)
+✓ Finished filesystem cache database compaction in 17.4s
+✓ Finished writing to filesystem cache in 10.4s
+ GET / 404 in 7.6s (compile: 3.2s, proxy.ts: 415ms, render: 4.0s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 1434ms (compile: 295ms, proxy.ts: 903ms, render: 236ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 385ms (compile: 242ms, proxy.ts: 91ms, render: 51ms)
+ GET / 200 in 3.3s (compile: 365ms, proxy.ts: 466ms, render: 2.5s)
+ GET / 200 in 1941ms (compile: 58ms, proxy.ts: 44ms, render: 1839ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 336ms (compile: 197ms, proxy.ts: 57ms, render: 82ms)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 1136ms (compile: 313ms, proxy.ts: 382ms, render: 441ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 34.1s (compile: 3.9s, proxy.ts: 11.5s, render: 18.7s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 15.2s (compile: 410ms, proxy.ts: 4.3s, render: 10.5s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 9.2s (compile: 166ms, proxy.ts: 2.4s, render: 6.6s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 404 in 4.5s (compile: 2.4s, proxy.ts: 1395ms, render: 673ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 6.5s (compile: 68ms, proxy.ts: 666ms, render: 5.7s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 5.7s (compile: 43ms, proxy.ts: 538ms, render: 5.1s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 169ms (compile: 57ms, proxy.ts: 18ms, render: 95ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 9.8s (compile: 78ms, proxy.ts: 197ms, render: 9.5s)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET / 200 in 3.1s (compile: 38ms, proxy.ts: 27ms, render: 3.0s)
+✓ Compiled in 3.2s
+ GET /api/trpc/organization.course.get,organization.material.list,organization.quiz.listTopics?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22id%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%221%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%7D 200 in 12.8s (compile: 5.8s, proxy.ts: 36ms, render: 7.0s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 125ms (compile: 39ms, proxy.ts: 12ms, render: 75ms)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 12.7s (compile: 44ms, proxy.ts: 162ms, render: 12.5s)
+ GET /api/trpc/organization.quiz.list?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%2C%22includeAdaptive%22%3Afalse%7D%7D%7D 200 in 9.8s (compile: 6.5s, proxy.ts: 401ms, render: 2.8s)
+ GET /api/trpc/user.getSession?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 80ms (compile: 42ms, proxy.ts: 12ms, render: 26ms)
+✓ Compiled in 3.1s
+✓ Compiled in 3.5s
+✓ Compiled in 1711ms
+✓ Compiled in 2.6s
+ GET /api/auth/get-session?disableCookieCache=true 200 in 492ms (compile: 111ms, proxy.ts: 14ms, render: 367ms)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET / 200 in 5.7s (compile: 1826ms, proxy.ts: 2.1s, render: 1770ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 9.6s (compile: 1566ms, proxy.ts: 524ms, render: 7.5s)
+✓ Compiled in 1105ms
+ GET /api/auth/get-session?disableCookieCache=true 200 in 545ms (compile: 234ms, proxy.ts: 16ms, render: 295ms)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET / 200 in 4.4s (compile: 1101ms, proxy.ts: 134ms, render: 3.2s)
+✓ Compiled in 2.6s
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 6.7s (compile: 63ms, proxy.ts: 580ms, render: 6.1s)
+✓ Compiled in 1701ms
+✓ Compiled in 1598ms
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET /api/auth/get-session?disableCookieCache=true 200 in 4.0s (compile: 48ms, proxy.ts: 20ms, render: 4.0s)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+ GET / 200 in 15.6s (compile: 1171ms, proxy.ts: 17ms, render: 14.4s)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 21.4s (compile: 3.3s, proxy.ts: 4.1s, render: 14.0s)
+ GET /api/auth/get-session?disableCookieCache=true 200 in 213ms (compile: 134ms, proxy.ts: 17ms, render: 62ms)
+ GET /dashboard/organization/courses/14c06c16-1cda-4e9e-82d5-d83ddc97b932 200 in 1257ms (compile: 28ms, proxy.ts: 265ms, render: 965ms)
+Better Auth was already imported. This breaks async local storage instance and will lead to issues!
+✓ Compiled in 22.4s
+ GET / 200 in 10.6s (compile: 1800ms, proxy.ts: 18ms, render: 8.8s)
+ GET / 200 in 6.5s (compile: 51ms, proxy.ts: 103ms, render: 6.4s)
+✓ Finished filesystem cache database compaction in 17.3s
+ GET /api/trpc/user.getSession?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%2C%22v%22%3A1%7D%7D%7D 200 in 164ms (compile: 58ms, proxy.ts: 16ms, render: 90ms)
+✓ Compiled in 8.2s
+✓ Compiled in 3.5s
+ GET /api/trpc/organization.course.get,organization.material.list,organization.quiz.listTopics?batch=1&input=%7B%220%22%3A%7B%22json%22%3A%7B%22id%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%221%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%2C%222%22%3A%7B%22json%22%3A%7B%22courseId%22%3A%2214c06c16-1cda-4e9e-82d5-d83ddc97b932%22%7D%7D%7D 200 in 3.4s (compile: 101ms, proxy.ts: 15ms, render: 3.3s)
+ GET / 200 in 823ms (compile: 118ms, proxy.ts: 58ms, render: 648ms)
+○ Compiling /pricing ...
+ GET /pricing 200 in 14.0s (compile: 13.5s, proxy.ts: 10ms, render: 536ms)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          [?25h
+[ELIFECYCLE] Command failed with exit code 4294967295.

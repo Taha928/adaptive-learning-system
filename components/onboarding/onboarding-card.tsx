@@ -49,7 +49,7 @@ export function OnboardingCard(): React.JSX.Element {
 	return (
 		<Card className="w-full border-transparent px-4 py-8 dark:border-border">
 			<CardHeader>
-				<StudyNexMascot className="mb-2 size-14" />
+				<StudyNexMascot animated className="mb-2 size-20" />
 				<CardTitle className="text-base lg:text-lg">
 					Welcome to StudyNex
 				</CardTitle>

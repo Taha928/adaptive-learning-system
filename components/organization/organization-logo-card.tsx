@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
-import { v4 as uuid } from "uuid";
 import { CropImageModal } from "@/components/crop-image-modal";
 import { OrganizationLogo } from "@/components/organization/organization-logo";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { storageConfig } from "@/config/storage.config";
+import { useUpload } from "@/hooks/use-upload";
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
@@ -29,7 +28,7 @@ export function OrganizationLogoCard(): React.JSX.Element | null {
 	const [uploading, setUploading] = React.useState(false);
 	const { data: organization } = authClient.useActiveOrganization();
 	const utils = trpc.useUtils();
-	const getSignedUploadUrlMutation = trpc.storage.signedUploadUrl.useMutation();
+	const { uploadFile } = useUpload();
 
 	const handleRemove = async (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -69,28 +68,14 @@ export function OrganizationLogoCard(): React.JSX.Element | null {
 
 					setUploading(true);
 					try {
-						const path = `logo-${organization.id}-${uuid()}.png`;
-						const { signedUrl } = await getSignedUploadUrlMutation.mutateAsync({
-							path,
-							bucket: storageConfig.bucketNames.images,
-						});
-
-						const response = await fetch(signedUrl, {
-							method: "PUT",
-							body: croppedImageData,
-							headers: {
-								"Content-Type": "image/png",
-							},
-						});
-
-						if (!response.ok) {
-							throw new Error("Failed to upload image");
-						}
+						// Upload to Supabase Storage via the secure server route and
+						// store the returned permanent public URL on the organization.
+						const { url } = await uploadFile(croppedImageData, "logos");
 
 						const { error } = await authClient.organization.update({
 							organizationId: organization.id,
 							data: {
-								logo: path,
+								logo: url,
 							},
 						});
 

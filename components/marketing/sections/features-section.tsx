@@ -24,7 +24,7 @@ const features: Feature[] = [
 	{
 		title: "A tutor that knows your material",
 		description:
-			"Ask anything and get answers grounded in your own uploads, with citations back to the exact slide or page. Powered by Gemini, available any hour of the night before the exam.",
+			"Ask anything and get answers grounded in your own uploads, with citations back to the exact slide or page. Powered by advanced AI, available any hour of the night before the exam.",
 		icon: SparklesIcon,
 		className: "lg:col-span-2 lg:row-span-2",
 		accent: true,

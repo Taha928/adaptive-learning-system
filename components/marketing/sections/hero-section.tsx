@@ -61,7 +61,7 @@ function HeroPreview() {
 						</span>
 						<span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-marketing-accent-soft px-2 py-0.5 text-[11px] font-medium text-marketing-fg-muted">
 							<span className="size-1.5 rounded-full bg-marketing-accent" />
-							Gemini · grounded in your notes
+							AI tutor · grounded in your notes
 						</span>
 					</div>
 
@@ -213,9 +213,9 @@ export function HeroSection() {
 					>
 						Upload your slides, PDFs, and notes. StudyNex turns them into
 						personalized learning content, generates adaptive quizzes based on
-						your performance, and helps you revise with structured guidance. A
-						Gemini-powered AI tutor is available 24/7 to explain concepts and
-						support your learning.
+						your performance, and helps you revise with structured guidance. An
+						AI tutor is available 24/7 to explain concepts and support your
+						learning.
 					</motion.p>
 
 					{/* CTA Buttons */}

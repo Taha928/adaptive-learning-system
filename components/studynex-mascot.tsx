@@ -5,12 +5,16 @@ import { cn } from "@/lib/utils";
  * StudyNex mascot — a friendly graduate "spark" companion (Duolingo-style brand
  * character). Clean, minimal and professional. Inherits the theme accent via
  * `text-primary`, so it adapts to the palette. Reused for empty states,
- * onboarding, milestones, and as the Nexy help-bot avatar.
+ * onboarding, milestones, and as the Nex help-bot avatar.
+ *
+ * Pass `animated` for a gentle idle bob + occasional wiggle (respects
+ * prefers-reduced-motion via the `motion-safe:` variant).
  */
 export function StudyNexMascot({
 	className,
+	animated = false,
 	...props
-}: React.SVGProps<SVGSVGElement>) {
+}: React.SVGProps<SVGSVGElement> & { animated?: boolean }) {
 	return (
 		<svg
 			viewBox="0 0 120 120"
@@ -18,7 +22,12 @@ export function StudyNexMascot({
 			xmlns="http://www.w3.org/2000/svg"
 			role="img"
 			aria-label="StudyNex mascot"
-			className={cn("text-primary", className)}
+			className={cn(
+				"text-primary [transform-origin:50%_80%]",
+				animated &&
+					"motion-safe:animate-mascot-bob motion-safe:hover:animate-mascot-wiggle",
+				className,
+			)}
 			{...props}
 		>
 			<title>StudyNex mascot</title>

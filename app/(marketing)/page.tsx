@@ -66,7 +66,7 @@ export default function HomePage() {
 			{
 				question: "Where do the quizzes and answers come from?",
 				answer:
-					"From your own material. StudyNex uses Google's Gemini models to generate questions and tutor replies grounded in what you uploaded, and points back to the exact slide or page so you can verify it.",
+					"From your own material. StudyNex uses advanced AI models to generate questions and tutor replies grounded in what you uploaded, and points back to the exact slide or page so you can verify it.",
 			},
 			{
 				question: "Do I need a credit card to start?",
@@ -74,7 +74,7 @@ export default function HomePage() {
 					"No. The free plan lets you create a course, run quizzes and chat with the tutor right away. Upgrade only when you want more courses and unlimited tutor messages.",
 			},
 			{
-				question: "How is StudyNex different from ChatGPT or Gemini?",
+				question: "How is StudyNex different from ChatGPT or other chatbots?",
 				answer:
 					"StudyNex is built specifically for education and personalized learning. Unlike general-purpose AI tools, it lets you upload your own study materials (PDFs, notes, PPTs) and turns them into a structured learning experience — generating quizzes, tracking progress, and adapting to your content and performance, rather than acting as a general chatbot.",
 			},

@@ -21,9 +21,10 @@
   --popover: var(--color-white);
   --popover-foreground: var(--color-neutral-950);
 
-  /* StudyNex (item 21): calm, educational blue accent on a white + soft-gray
-     base with charcoal text. Minimal saturation, Claude/Khanmigo feel. */
-  --primary: oklch(0.55 0.15 255);
+  /* StudyNex (item 21): warm, friendly soft-orange accent on a white + soft-gray
+     base with charcoal text. Duolingo-style energy, but kept low-saturation so it
+     still reads as a calm educational product. Matches the marketing amber. */
+  --primary: oklch(0.68 0.158 52);
   --primary-foreground: var(--color-white);
 
   --secondary: oklch(96.76% 0.0013 286.38);
@@ -40,8 +41,8 @@
 
   --border: var(--color-neutral-200);
   --input: var(--color-neutral-200);
-  --ring: oklch(0.55 0.15 255);
-  --input-ring: oklch(0.55 0.15 255);
+  --ring: oklch(0.68 0.158 52);
+  --input-ring: oklch(0.68 0.158 52);
 
   --chart-1: var(--color-orange-400);
   --chart-2: var(--color-teal-600);
@@ -92,8 +93,8 @@
   --popover: var(--color-neutral-900);
   --popover-foreground: var(--color-white);
 
-  --primary: oklch(0.68 0.14 255);
-  --primary-foreground: oklch(0.18 0.02 255);
+  --primary: oklch(0.74 0.15 58);
+  --primary-foreground: oklch(0.22 0.04 50);
 
   --secondary: var(--color-neutral-800);
   --secondary-foreground: oklch(98.43% 0.0017 247.84);
@@ -120,7 +121,7 @@
 
   --sidebar: var(--color-neutral-950);
   --sidebar-foreground: var(--color-white);
-  --sidebar-primary: var(--color-blue-500);
+  --sidebar-primary: oklch(0.74 0.15 58);
   --sidebar-primary-foreground: var(--color-white);
   --sidebar-accent: var(--color-neutral-800);
   --sidebar-accent-foreground: var(--color-white);
@@ -225,6 +226,9 @@
   --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
   --animate-fadeIn: fadeIn 0.3s ease-in-out;
   --animate-slideIn: slideIn 0.3s ease-in-out;
+  /* Friendly mascot motion (Duolingo-style): a gentle idle bob + occasional wiggle. */
+  --animate-mascot-bob: mascot-bob 3.2s ease-in-out infinite;
+  --animate-mascot-wiggle: mascot-wiggle 2.8s ease-in-out infinite;
 
   @keyframes accordion-down {
     from { height: 0; }
@@ -249,6 +253,18 @@
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+
+  @keyframes mascot-bob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-6%) rotate(-1.5deg); }
+  }
+
+  @keyframes mascot-wiggle {
+    0%, 92%, 100% { transform: rotate(0deg); }
+    94% { transform: rotate(6deg); }
+    96% { transform: rotate(-5deg); }
+    98% { transform: rotate(3deg); }
   }
 
   @keyframes slideIn {

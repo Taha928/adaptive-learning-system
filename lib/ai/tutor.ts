@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { DEFAULT_CHAT_MODEL } from "@/config/billing.config";
 
 /**
@@ -6,9 +6,8 @@ import { DEFAULT_CHAT_MODEL } from "@/config/billing.config";
  * All tutor features (chat, quiz generation, study plans) resolve their model
  * and persona through here so behaviour stays consistent.
  *
- * Uses Google Gemini natively via @ai-sdk/google (reads GOOGLE_GENERATIVE_AI_API_KEY).
- * Native is preferred over an OpenAI-compatible gateway because structured output
- * (generateObject for quizzes/topics/plans) is more reliable.
+ * Uses OpenAI via @ai-sdk/openai (reads OPENAI_API_KEY). generateObject
+ * (quizzes/topics/plans) works against OpenAI's structured-output support.
  */
 
 export const TUTOR_SYSTEM_PROMPT = `You are an adaptive personal learning tutor.
@@ -17,9 +16,9 @@ guiding hints rather than the full answer. Adjust the depth of your explanations
 to the student's demonstrated level of understanding. Be encouraging, patient,
 and concise.`;
 
-/** Resolve the Gemini model used for tutor tasks (chat + generation). */
+/** Resolve the OpenAI model used for tutor tasks (chat + generation). */
 export function tutorModel(modelId: string = DEFAULT_CHAT_MODEL) {
-	return google(modelId);
+	return openai(modelId);
 }
 
 export type Difficulty = "easy" | "medium" | "hard";

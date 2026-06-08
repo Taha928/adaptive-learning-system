@@ -56,7 +56,10 @@ const aiQuizSchema = z.object({
 					"longAnswer",
 				]),
 				// MCQ: 3-4 options; trueFalse: ["True","False"]; short/long: [].
-				options: z.array(z.string()).max(6).default([]),
+				// Required (no .default) so OpenAI strict structured-output keeps it
+				// in `required` — strict mode rejects schemas with optional keys.
+				// The model returns [] for short/long answers (see prompt).
+				options: z.array(z.string()).max(6),
 				// For short/long answers this is a model answer / rubric used by the AI grader.
 				correctAnswer: z.string(),
 				explanation: z.string(),

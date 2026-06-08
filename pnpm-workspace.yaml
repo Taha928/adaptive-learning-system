@@ -1,9 +1,11 @@
-allowBuilds:
-  '@prisma/engines': set this to true or false
-  '@sentry/cli': set this to true or false
-  cpu-features: set this to true or false
-  esbuild: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  ssh2: set this to true or false
+verifyDepsBeforeRun: false
+
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - '@sentry/cli'
+  - cpu-features
+  - esbuild
+  - prisma
+  - protobufjs
+  - sharp
+  - ssh2

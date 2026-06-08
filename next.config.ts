@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
 		optimizePackageImports: ["recharts", "lucide-react", "date-fns"],
 	},
 	turbopack: {
+		// Point Turbopack at the actual project root to prevent it from
+		// picking up the parent-directory lockfile and re-compiling everything.
+		root: __dirname,
 		resolveExtensions: [".ts", ".tsx", ".js", ".jsx"],
 	},
 	logging: {
@@ -21,7 +24,7 @@ const nextConfig: NextConfig = {
 		},
 	},
 
-	reactStrictMode: true,
+	reactStrictMode: process.env.NODE_ENV === "production",
 	poweredByHeader: false,
 	images: {
 		dangerouslyAllowSVG: true,

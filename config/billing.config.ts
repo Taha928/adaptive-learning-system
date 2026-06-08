@@ -40,7 +40,7 @@ export const billingConfig = {
 				"Unlimited tutor messages",
 				"Adaptive quizzes & study plans",
 				"Full mastery analytics",
-				"Priority Gemini models",
+				"Priority AI models",
 				"Shared class workspaces",
 			],
 			limits: {
@@ -613,25 +613,25 @@ export type CreditModel = keyof typeof creditCosts;
  */
 export const chatModels = [
 	{
-		id: "gemini-2.5-flash" as const,
-		name: "Gemini 2.5 Flash",
-		description: "Fast & capable (recommended)",
+		id: "gpt-4o-mini" as const,
+		name: "GPT-4o Mini",
+		description: "Fast & affordable (recommended)",
 		tier: "standard" as const,
-		provider: "google" as const,
+		provider: "openai" as const,
 	},
 	{
-		id: "gemini-2.5-flash-lite" as const,
-		name: "Gemini 2.5 Flash Lite",
+		id: "gpt-4.1-nano" as const,
+		name: "GPT-4.1 Nano",
 		description: "Fastest & most affordable",
 		tier: "budget" as const,
-		provider: "google" as const,
+		provider: "openai" as const,
 	},
 	{
-		id: "gemini-2.5-pro" as const,
-		name: "Gemini 2.5 Pro",
+		id: "gpt-4o" as const,
+		name: "GPT-4o",
 		description: "Highest capability",
 		tier: "premium" as const,
-		provider: "google" as const,
+		provider: "openai" as const,
 	},
 ] as const;
 
@@ -641,7 +641,7 @@ export type ChatModelTier = ChatModel["tier"];
 export type ChatModelProvider = ChatModel["provider"];
 
 /** Default model for new chats */
-export const DEFAULT_CHAT_MODEL: ChatModelId = "gemini-2.5-flash";
+export const DEFAULT_CHAT_MODEL: ChatModelId = "gpt-4o-mini";
 
 /**
  * Get credit cost info for a chat model (average per message estimate)

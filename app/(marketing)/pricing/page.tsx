@@ -30,7 +30,7 @@ const pricingFaq = {
 				"Institution is for schools and teams: classroom management, student analytics, multiple users and a teacher dashboard. Contact us and we'll tailor it to your group.",
 		},
 		{
-			question: "How is StudyNex different from ChatGPT or Gemini?",
+			question: "How is StudyNex different from ChatGPT or other chatbots?",
 			answer:
 				"StudyNex is built specifically for education. You upload your own study materials (PDFs, notes, PPTs) and it turns them into a structured learning experience — generating quizzes, tracking progress and adapting to your content and performance, rather than acting as a general chatbot.",
 		},

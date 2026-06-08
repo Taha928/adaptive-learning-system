@@ -172,7 +172,7 @@ export const organizationMaterialRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	// INSTRUCTOR ONLY: use Gemini to split a material's text into topics.
+	// INSTRUCTOR ONLY: use the AI to split a material's text into topics.
 	// Topics are the unit quizzes and study plans are generated from, so this
 	// is the bridge between raw uploaded content and the adaptive features.
 	segmentTopics: protectedOrganizationProcedure

@@ -41,7 +41,7 @@ const HELP_ENTRIES: HelpEntry[] = [
 	{
 		question: "What is the AI Tutor?",
 		answer:
-			"The AI Tutor (top of the sidebar) is your Gemini-powered study companion. Ask questions, attach files, and get explanations grounded in your own material.",
+			"The AI Tutor (top of the sidebar) is your AI-powered study companion. Ask questions, attach files, and get explanations grounded in your own material.",
 	},
 	{
 		question: "How do I start learning?",
@@ -60,7 +60,7 @@ export function NexyHelpWidget() {
 				<div className="flex w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
 					{/* Header */}
 					<div className="flex items-center gap-3 border-b bg-primary/5 p-3">
-						<StudyNexMascot className="size-9 shrink-0" />
+						<StudyNexMascot animated className="size-11 shrink-0" />
 						<div className="min-w-0 flex-1">
 							<p className="font-semibold text-sm leading-tight">Nexy</p>
 							<p className="text-muted-foreground text-xs leading-tight">

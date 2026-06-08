@@ -13,7 +13,7 @@ function errorResponse(error: string, message: string, status: number) {
 
 /**
  * Extracts plain text from an uploaded PDF so it can be stored on a Material
- * and fed to Gemini for topic segmentation / quiz generation.
+ * and fed to the AI for topic segmentation / quiz generation.
  *
  * This is a route handler (not tRPC) because tRPC's JSON transport can't carry
  * binary file uploads. The client sends multipart/form-data with a `file` field

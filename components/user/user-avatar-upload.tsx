@@ -1,19 +1,17 @@
 "use client";
 
 import NiceModal from "@ebay/nice-modal-react";
-import { ImageIcon, TrashIcon } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import * as React from "react";
 import { useDropzone } from "react-dropzone";
-import { v4 as uuid } from "uuid";
 import { CropImageModal } from "@/components/crop-image-modal";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { UserAvatar } from "@/components/user/user-avatar";
-import { storageConfig } from "@/config/storage.config";
 import { useSession } from "@/hooks/use-session";
+import { useUpload } from "@/hooks/use-upload";
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/trpc/client";
 
 export type UserAvatarUploadProps = {
 	onSuccess: () => void;
@@ -27,7 +25,7 @@ export function UserAvatarUpload({
 	const { user, reloadSession } = useSession();
 	const [deleting, setDeleting] = React.useState(false);
 	const [uploading, setUploading] = React.useState(false);
-	const getSignedUploadUrlMutation = trpc.storage.signedUploadUrl.useMutation();
+	const { uploadFile } = useUpload();
 
 	const handleRemove = async (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -63,26 +61,12 @@ export function UserAvatarUpload({
 
 					setUploading(true);
 					try {
-						const path = `${user.id}-${uuid()}.png`;
-						const { signedUrl } = await getSignedUploadUrlMutation.mutateAsync({
-							path,
-							bucket: storageConfig.bucketNames.images,
-						});
-
-						const response = await fetch(signedUrl, {
-							method: "PUT",
-							body: croppedImageData,
-							headers: {
-								"Content-Type": "image/png",
-							},
-						});
-
-						if (!response.ok) {
-							throw new Error("Failed to upload image");
-						}
+						// Upload to Supabase Storage via the secure server route and
+						// store the returned permanent public URL on the user.
+						const { url } = await uploadFile(croppedImageData, "avatars");
 
 						const { error } = await authClient.updateUser({
-							image: path,
+							image: url,
 						});
 
 						if (error) {

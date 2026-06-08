@@ -29,7 +29,7 @@ export const studyPlanGenerationSchema = z.object({
 					),
 				topicTitle: z
 					.string()
-					.optional()
+					.nullable()
 					.describe(
 						"If this step corresponds to one of the provided course topics, repeat its exact title here so it can be linked.",
 					),
