@@ -2,7 +2,6 @@ import "server-only";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
 
 function createPrismaClient() {
 	const connectionString = process.env.DATABASE_URL;
@@ -14,16 +13,16 @@ function createPrismaClient() {
 	const safeSchema =
 		schema && /^[a-zA-Z0-9_]+$/.test(schema) ? schema : undefined;
 
-	const pool = new Pool({
+	// Pass the pool config directly; the adapter builds the pg.Pool internally.
+	// (Avoids a Pool type mismatch between @types/pg and @prisma/adapter-pg.)
+	const adapter = new PrismaPg({
 		connectionString,
 		...(safeSchema
 			? { options: `-c search_path=${safeSchema},public` }
 			: undefined),
 	});
 
-	return new PrismaClient({
-		adapter: new PrismaPg(pool),
-	});
+	return new PrismaClient({ adapter });
 }
 
 declare global {
