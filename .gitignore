@@ -54,3 +54,8 @@ test-results/
 tests/e2e/debug/*.png
 tests/e2e/screenshots/
 tests/e2e/.auth/
+# Local debug artifacts (Claude session)
+cookies.txt
+dev.log
+dev-run.log
+dev-boot.log
