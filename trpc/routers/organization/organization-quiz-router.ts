@@ -454,6 +454,45 @@ export const organizationQuizRouter = createTRPCRouter({
 		}),
 
 	// INSTRUCTOR ONLY: generate an AI quiz from a topic's material.
+	// Delete a quiz. Instructor-only, mirroring course.delete. Question,
+	// QuizAttempt and Answer all cascade from Quiz, so one deleteMany is enough
+	// and nothing outside this quiz is touched.
+	delete: protectedOrganizationProcedure
+		.input(quizIdSchema)
+		.mutation(async ({ ctx, input }) => {
+			assertCanManage(ctx.membership.role);
+			const result = await prisma.quiz.deleteMany({
+				where: { id: input.quizId, organizationId: ctx.organization.id },
+			});
+
+			if (result.count === 0) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+			}
+
+			return { success: true };
+		}),
+
+	// Delete one of the current user's own attempts. Scoped to userId as well as
+	// the org so a student can never remove someone else's history. Answers
+	// cascade from QuizAttempt; the quiz itself is left alone.
+	deleteAttempt: protectedOrganizationProcedure
+		.input(attemptIdSchema)
+		.mutation(async ({ ctx, input }) => {
+			const result = await prisma.quizAttempt.deleteMany({
+				where: {
+					id: input.attemptId,
+					organizationId: ctx.organization.id,
+					userId: ctx.user.id,
+				},
+			});
+
+			if (result.count === 0) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Attempt not found" });
+			}
+
+			return { success: true };
+		}),
+
 	generateFromTopic: protectedOrganizationProcedure
 		.input(generateFromTopicSchema)
 		.mutation(async ({ ctx, input }) => {

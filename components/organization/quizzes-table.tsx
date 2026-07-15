@@ -1,9 +1,15 @@
 "use client";
 
 import NiceModal from "@ebay/nice-modal-react";
-import { ListChecksIcon, PlayIcon, SparklesIcon } from "lucide-react";
+import {
+	ListChecksIcon,
+	PlayIcon,
+	SparklesIcon,
+	Trash2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ConfirmationModal } from "@/components/confirmation-modal";
 import { GenerateQuizModal } from "@/components/organization/generate-quiz-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { capitalize, cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
 
 const STATUS_VARIANT: Record<
 	string,
@@ -36,10 +43,30 @@ const DIFFICULTY_STYLES: Record<string, string> = {
 
 export function QuizzesTable({ courseId }: { courseId?: string }) {
 	const [showAdaptive, setShowAdaptive] = useState(false);
+	const utils = trpc.useUtils();
 	const { data, isPending } = trpc.organization.quiz.list.useQuery({
 		courseId,
 		includeAdaptive: showAdaptive,
 	});
+
+	const deleteMutation = trpc.organization.quiz.delete.useMutation({
+		onSuccess: () => {
+			toast.success("Quiz deleted");
+			utils.organization.quiz.list.invalidate();
+			utils.organization.quiz.listMyAttempts.invalidate();
+		},
+		onError: (error) => toast.error(error.message || "Failed to delete quiz"),
+	});
+
+	const handleDelete = (quizId: string, title: string) => {
+		NiceModal.show(ConfirmationModal, {
+			title: "Delete quiz",
+			message: `Delete "${title}"? This also removes its questions and any attempts at it. Your course, material and topics are not affected.`,
+			confirmLabel: "Delete",
+			destructive: true,
+			onConfirm: () => deleteMutation.mutate({ quizId }),
+		});
+	};
 
 	const quizzes = data?.quizzes ?? [];
 
@@ -155,14 +182,25 @@ export function QuizzesTable({ courseId }: { courseId?: string }) {
 											)}
 										</TableCell>
 										<TableCell className="text-right">
-											<Button asChild size="sm" variant="outline">
-												<Link
-													href={`/dashboard/organization/quizzes/${quiz.id}/take`}
+											<div className="flex items-center justify-end gap-1">
+												<Button asChild size="sm" variant="outline">
+													<Link
+														href={`/dashboard/organization/quizzes/${quiz.id}/take`}
+													>
+														<PlayIcon className="size-3.5" />
+														Take
+													</Link>
+												</Button>
+												<Button
+													size="icon"
+													variant="ghost"
+													onClick={() => handleDelete(quiz.id, quiz.title)}
+													disabled={deleteMutation.isPending}
+													aria-label="Delete quiz"
 												>
-													<PlayIcon className="size-3.5" />
-													Take
-												</Link>
-											</Button>
+													<Trash2Icon className="size-3.5 text-muted-foreground hover:text-destructive" />
+												</Button>
+											</div>
 										</TableCell>
 									</TableRow>
 								);

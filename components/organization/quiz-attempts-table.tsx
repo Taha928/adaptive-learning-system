@@ -1,7 +1,10 @@
 "use client";
 
-import { ClipboardListIcon } from "lucide-react";
+import NiceModal from "@ebay/nice-modal-react";
+import { ClipboardListIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { ConfirmationModal } from "@/components/confirmation-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
@@ -25,9 +28,30 @@ function formatDate(value: string | Date | null): string {
 }
 
 export function QuizAttemptsTable() {
+	const utils = trpc.useUtils();
 	const { data, isPending } = trpc.organization.quiz.listMyAttempts.useQuery(
 		{},
 	);
+
+	const deleteMutation = trpc.organization.quiz.deleteAttempt.useMutation({
+		onSuccess: () => {
+			toast.success("Attempt deleted");
+			utils.organization.quiz.listMyAttempts.invalidate();
+			utils.organization.quiz.list.invalidate();
+			utils.organization.analytics.invalidate();
+		},
+		onError: (error) => toast.error(error.message || "Failed to delete attempt"),
+	});
+
+	const handleDelete = (attemptId: string, title: string) => {
+		NiceModal.show(ConfirmationModal, {
+			title: "Delete attempt",
+			message: `Delete your attempt at "${title}"? This removes only this result — the quiz itself stays.`,
+			confirmLabel: "Delete",
+			destructive: true,
+			onConfirm: () => deleteMutation.mutate({ attemptId }),
+		});
+	};
 
 	const attempts = data?.attempts ?? [];
 
@@ -85,13 +109,24 @@ export function QuizAttemptsTable() {
 								{formatDate(a.submittedAt)}
 							</TableCell>
 							<TableCell>
-								<Button asChild variant="ghost" size="sm">
-									<Link
-										href={`/dashboard/organization/quizzes/attempts/${a.id}`}
+								<div className="flex items-center justify-end gap-1">
+									<Button asChild variant="ghost" size="sm">
+										<Link
+											href={`/dashboard/organization/quizzes/attempts/${a.id}`}
+										>
+											Review
+										</Link>
+									</Button>
+									<Button
+										size="icon"
+										variant="ghost"
+										onClick={() => handleDelete(a.id, a.quiz.title)}
+										disabled={deleteMutation.isPending}
+										aria-label="Delete attempt"
 									>
-										Review
-									</Link>
-								</Button>
+										<Trash2Icon className="size-3.5 text-muted-foreground hover:text-destructive" />
+									</Button>
+								</div>
 							</TableCell>
 						</TableRow>
 					))}
