@@ -65,3 +65,9 @@ export type SubmitAnswerInput = z.infer<typeof submitAnswerSchema>;
 export type SubmitAttemptInput = z.infer<typeof submitAttemptSchema>;
 export type ListMyAttemptsInput = z.infer<typeof listMyAttemptsSchema>;
 export type AttemptIdInput = z.infer<typeof attemptIdSchema>;
+
+// Generate a Q&A practice set spanning every topic in a course.
+export const generateCourseQASchema = z.object({
+	courseId: z.string().uuid(),
+	questionsPerTopic: z.number().int().min(1).max(5).default(2),
+});

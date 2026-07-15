@@ -177,6 +177,7 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 			}
 
 			const now = new Date();
+			const completing = input.completed;
 
 			const updated = await prisma.$transaction(async (tx) => {
 				const result = await tx.studyPlanItem.updateMany({
@@ -184,7 +185,11 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 						id: input.itemId,
 						organizationId: ctx.organization.id,
 					},
-					data: { status: "completed", completedAt: now },
+					// Un-marking returns the item to `pending` and clears the
+					// timestamp, so ticking a step off is reversible.
+					data: completing
+						? { status: "completed", completedAt: now }
+						: { status: "pending", completedAt: null },
 				});
 
 				if (result.count === 0) {
@@ -194,20 +199,24 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 					});
 				}
 
-				await tx.performanceLog.create({
-					data: {
-						organizationId: ctx.organization.id,
-						userId: ctx.user.id,
-						courseId: item.studyPlan.courseId ?? null,
-						topicId: item.topicId ?? null,
-						eventType: PerformanceEventType.planItemCompleted,
-						occurredAt: now,
-						metadata: {
-							studyPlanId: item.studyPlan.id,
-							studyPlanItemId: input.itemId,
+				// Only completing is an achievement worth logging. Un-marking is a
+				// correction, so it must not write another progress event.
+				if (completing) {
+					await tx.performanceLog.create({
+						data: {
+							organizationId: ctx.organization.id,
+							userId: ctx.user.id,
+							courseId: item.studyPlan.courseId ?? null,
+							topicId: item.topicId ?? null,
+							eventType: PerformanceEventType.planItemCompleted,
+							occurredAt: now,
+							metadata: {
+								studyPlanId: item.studyPlan.id,
+								studyPlanItemId: input.itemId,
+							},
 						},
-					},
-				});
+					});
+				}
 
 				const fresh = await tx.studyPlanItem.findUnique({
 					where: { id: input.itemId },
@@ -222,7 +231,10 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 			});
 
 			// Completing a study-plan item counts toward the learning streak.
-			await recordStreakActivity(ctx.user.id);
+			// Un-marking should not, so don't touch the streak on undo.
+			if (completing) {
+				await recordStreakActivity(ctx.user.id);
+			}
 
 			return updated;
 		}),

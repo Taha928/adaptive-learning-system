@@ -9,6 +9,7 @@ import {
 	GraduationCapIcon,
 	LayoutDashboardIcon,
 	ListChecksIcon,
+	MessagesSquareIcon,
 	SettingsIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -89,6 +90,11 @@ export function OrganizationMenuItems(): React.JSX.Element {
 					href: `${basePath}/quizzes`,
 					icon: ListChecksIcon,
 					exactMatch: true,
+				},
+				{
+					label: "Questions & Answers",
+					href: `${basePath}/practice`,
+					icon: MessagesSquareIcon,
 				},
 				{
 					label: "My Attempts",

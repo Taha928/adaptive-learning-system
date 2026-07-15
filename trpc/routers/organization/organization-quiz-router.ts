@@ -23,6 +23,7 @@ import { logger } from "@/lib/logger";
 import { recordStreakActivity } from "@/lib/streak";
 import {
 	attemptIdSchema,
+	generateCourseQASchema,
 	generateFromTopicSchema,
 	listMyAttemptsSchema,
 	listQuizzesSchema,
@@ -146,6 +147,108 @@ ${sourceText || "(No additional material provided. Generate questions based on t
 			title: object.title || `${topic.title} — ${difficulty} quiz`,
 			description: `AI-generated ${difficulty} quiz for ${topic.title}.`,
 			difficulty: dbDifficulty,
+			isAiGenerated: true,
+			status: QuizStatus.published,
+			questions: {
+				create: object.questions.map((q, index) => ({
+					organizationId,
+					prompt: q.prompt,
+					type: AI_TYPE_TO_DB[q.type] ?? QuestionType.multipleChoice,
+					options:
+						q.type === "shortAnswer" ||
+						q.type === "longAnswer" ||
+						q.options.length === 0
+							? undefined
+							: (q.options as Prisma.InputJsonValue),
+					correctAnswer: q.correctAnswer,
+					explanation: q.explanation,
+					points: 1,
+					orderIndex: index,
+				})),
+			},
+		},
+		select: { id: true },
+	});
+
+	return quiz.id;
+}
+
+/**
+ * Build a Q&A set spanning EVERY topic in a course, rather than drilling one
+ * topic. Persisted as a normal Quiz with `topicId: null` so the whole existing
+ * engine — attempts, exact + AI grading, the review screen — applies unchanged.
+ * A null topicId also means `submitAttempt` skips the mastery update and the
+ * adaptive follow-up, which is what we want: this is practice across the
+ * course, not a rung on one topic's ladder.
+ */
+async function generateCourseQA(params: {
+	organizationId: string;
+	createdById: string | null;
+	courseId: string;
+	courseTitle: string;
+	topics: { title: string; summary: string | null }[];
+	questionsPerTopic: number;
+}): Promise<string> {
+	const {
+		organizationId,
+		createdById,
+		courseId,
+		courseTitle,
+		topics,
+		questionsPerTopic,
+	} = params;
+
+	const total = topics.length * questionsPerTopic;
+
+	// One block per topic, bounded overall so we stay inside the context budget
+	// however many topics the course has.
+	const perTopicBudget = Math.max(
+		400,
+		Math.floor(12000 / Math.max(topics.length, 1)),
+	);
+	const topicBlocks = topics
+		.map((t, i) =>
+			[
+				`Topic ${i + 1}: ${t.title}`,
+				(t.summary ?? "").slice(0, perTopicBudget),
+			]
+				.join("\n")
+				.trim(),
+		)
+		.join("\n\n");
+
+	const prompt = `Create a ${total}-question Q&A practice set for the course "${courseTitle}".
+
+COVERAGE IS MANDATORY: produce exactly ${questionsPerTopic} question(s) for EACH of the ${topics.length} topics listed below — ${total} questions in total. Do not skip a topic and do not over-weight one.
+
+Order the questions topic by topic, following the order given. Begin each question's prompt with its topic name followed by " — " so the student can see which topic it came from.
+
+Use ONLY the material below as the source of truth. Mix the question types:
+- Most should be "multipleChoice" with 3-4 options.
+- Include some "trueFalse" questions whose options are exactly ["True","False"].
+- Include at least one "shortAnswer" question with an empty options array and a short (1-3 word) correctAnswer.
+
+For multipleChoice and trueFalse, the "correctAnswer" MUST exactly match one of the provided options. Give a short explanation for every answer — this is a practice set, so the explanation is where the student actually learns.
+
+Topics:
+${topicBlocks}`;
+
+	const { object } = await generateObject({
+		model: tutorModel(),
+		system: TUTOR_SYSTEM_PROMPT,
+		schema: aiQuizSchema,
+		prompt,
+	});
+
+	const quiz = await prisma.quiz.create({
+		data: {
+			organizationId,
+			courseId,
+			topicId: null,
+			createdById,
+			title: object.title || `Q&A — ${courseTitle}`,
+			description: `Practice questions across all ${topics.length} topics in ${courseTitle}.`,
+			difficulty: "medium" as QuizDifficulty,
 			isAiGenerated: true,
 			status: QuizStatus.published,
 			questions: {
@@ -491,6 +594,57 @@ export const organizationQuizRouter = createTRPCRouter({
 			}
 
 			return { success: true };
+		}),
+
+	// Build a Q&A practice set covering every topic in a course. Deliberately
+	// NOT instructor-gated: this is a student practising, not authoring content.
+	generateCourseQA: protectedOrganizationProcedure
+		.input(generateCourseQASchema)
+		.mutation(async ({ ctx, input }) => {
+			const course = await prisma.course.findFirst({
+				where: { id: input.courseId, organizationId: ctx.organization.id },
+				select: { id: true, title: true },
+			});
+
+			if (!course) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+			}
+
+			const topics = await prisma.topic.findMany({
+				where: { courseId: course.id, organizationId: ctx.organization.id },
+				orderBy: { orderIndex: "asc" },
+				select: { title: true, summary: true },
+			});
+
+			if (topics.length === 0) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"This course has no topics yet. Generate topics from a material first.",
+				});
+			}
+
+			try {
+				const quizId = await generateCourseQA({
+					organizationId: ctx.organization.id,
+					createdById: ctx.user.id,
+					courseId: course.id,
+					courseTitle: course.title,
+					topics,
+					questionsPerTopic: input.questionsPerTopic,
+				});
+
+				return { quizId, topicCount: topics.length };
+			} catch (error) {
+				logger.error(
+					{ error, courseId: course.id, organizationId: ctx.organization.id },
+					"Failed to generate course Q&A",
+				);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Could not build the Q&A set. Please try again.",
+				});
+			}
 		}),
 
 	generateFromTopic: protectedOrganizationProcedure

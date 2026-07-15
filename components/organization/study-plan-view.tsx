@@ -201,26 +201,36 @@ export function StudyPlanView() {
 														<button
 															type="button"
 															onClick={() =>
-																!isDone &&
-																completeMutation.mutate({ itemId: item.id })
+																completeMutation.mutate({
+																	itemId: item.id,
+																	completed: !isDone,
+																})
 															}
-															disabled={isDone || completeMutation.isPending}
-															className="shrink-0"
+															disabled={completeMutation.isPending}
+															className="shrink-0 transition-transform hover:scale-110"
+															title={
+																isDone
+																	? "Done — click to un-mark"
+																	: "Mark as done"
+															}
 															aria-label={
-																isDone ? "Completed" : "Mark complete"
+																isDone
+																	? "Completed — click to un-mark"
+																	: "Mark complete"
 															}
+															aria-pressed={isDone}
 														>
 															{isDone ? (
-																<CheckCircle2Icon className="size-5 text-green-600" />
+																<CheckCircle2Icon className="size-5 text-emerald-600" />
 															) : (
-																<CircleIcon className="size-5 text-muted-foreground hover:text-foreground" />
+																<CircleIcon className="size-5 text-muted-foreground hover:text-emerald-600" />
 															)}
 														</button>
 														<div className="min-w-0">
 															<p
 																className={
 																	isDone
-																		? "truncate text-muted-foreground text-sm line-through"
+																		? "truncate font-medium text-emerald-700 text-sm dark:text-emerald-400"
 																		: "truncate font-medium text-sm"
 																}
 															>

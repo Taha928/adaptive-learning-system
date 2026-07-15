@@ -21,6 +21,9 @@ export const generatePlanSchema = z.object({
 // Mark a single study plan item complete.
 export const markItemCompleteSchema = z.object({
 	itemId: z.string().uuid(),
+	// false un-marks the item, sending it back to `pending`. Defaults to true so
+	// existing callers keep their original "mark complete" behaviour.
+	completed: z.boolean().default(true),
 });
 
 // Type exports
