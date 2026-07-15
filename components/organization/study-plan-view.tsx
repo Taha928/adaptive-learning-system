@@ -1,19 +1,29 @@
 "use client";
 
+import NiceModal from "@ebay/nice-modal-react";
 import {
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleIcon,
 	ListChecksIcon,
 	SparklesIcon,
+	Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmationModal } from "@/components/confirmation-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { capitalize } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
 
@@ -30,8 +40,11 @@ function formatDate(date: Date | string | null | undefined): string | null {
 export function StudyPlanView() {
 	const utils = trpc.useUtils();
 	const [goal, setGoal] = useState("");
+	const [courseId, setCourseId] = useState<string>("");
 
 	const { data, isPending } = trpc.organization.studyPlan.list.useQuery({});
+	const { data: courseData } = trpc.organization.course.list.useQuery({});
+	const courses = courseData?.courses ?? [];
 
 	const generateMutation = trpc.organization.studyPlan.generatePlan.useMutation(
 		{
@@ -53,15 +66,60 @@ export function StudyPlanView() {
 			onError: (error) => toast.error(error.message || "Failed to update item"),
 		});
 
+	const deleteMutation = trpc.organization.studyPlan.delete.useMutation({
+		onSuccess: () => {
+			toast.success("Study plan deleted");
+			utils.organization.studyPlan.list.invalidate();
+		},
+		onError: (error) =>
+			toast.error(error.message || "Failed to delete study plan"),
+	});
+
 	const plans = data?.plans ?? [];
 
+	// Always send a courseId: without it the planner falls back to every topic
+	// in the organisation and mixes unrelated courses into one plan.
 	const handleGenerate = () => {
-		generateMutation.mutate({ goal: goal.trim() || undefined });
+		if (!courseId) {
+			toast.error("Choose a course first");
+			return;
+		}
+		generateMutation.mutate({ courseId, goal: goal.trim() || undefined });
+	};
+
+	const handleDelete = (id: string, title: string) => {
+		NiceModal.show(ConfirmationModal, {
+			title: "Delete study plan",
+			message: `Delete "${title}"? This removes only this plan — your courses, topics and quizzes are untouched.`,
+			confirmLabel: "Delete",
+			destructive: true,
+			onConfirm: () => deleteMutation.mutate({ id }),
+		});
 	};
 
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+				<Select
+					value={courseId}
+					onValueChange={setCourseId}
+					disabled={generateMutation.isPending || courses.length === 0}
+				>
+					<SelectTrigger className="sm:w-[220px]">
+						<SelectValue
+							placeholder={
+								courses.length === 0 ? "No courses yet" : "Choose a course"
+							}
+						/>
+					</SelectTrigger>
+					<SelectContent>
+						{courses.map((course) => (
+							<SelectItem key={course.id} value={course.id}>
+								{course.title}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
 				<Input
 					placeholder="Optional: what do you want to achieve?"
 					value={goal}
@@ -72,7 +130,8 @@ export function StudyPlanView() {
 				<Button
 					onClick={handleGenerate}
 					loading={generateMutation.isPending}
-					disabled={generateMutation.isPending}
+					disabled={generateMutation.isPending || !courseId}
+					className="sm:ml-auto"
 				>
 					<SparklesIcon className="size-4" />
 					Generate Study Plan
@@ -111,6 +170,15 @@ export function StudyPlanView() {
 											<Badge variant="outline">
 												{completed}/{total} done
 											</Badge>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => handleDelete(plan.id, plan.title)}
+												disabled={deleteMutation.isPending}
+												aria-label="Delete study plan"
+											>
+												<Trash2Icon className="size-4 text-muted-foreground hover:text-destructive" />
+											</Button>
 										</div>
 									</div>
 									{plan.goal && (

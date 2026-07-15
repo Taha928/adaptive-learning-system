@@ -226,4 +226,28 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 
 			return updated;
 		}),
+
+	// Delete a single plan. Scoped to org + user so a student can only ever
+	// remove their own; StudyPlanItem cascades on studyPlanId, so the items go
+	// with it and nothing else is touched.
+	delete: protectedOrganizationProcedure
+		.input(studyPlanIdSchema)
+		.mutation(async ({ ctx, input }) => {
+			const result = await prisma.studyPlan.deleteMany({
+				where: {
+					id: input.id,
+					organizationId: ctx.organization.id,
+					userId: ctx.user.id,
+				},
+			});
+
+			if (result.count === 0) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Study plan not found",
+				});
+			}
+
+			return { success: true };
+		}),
 });

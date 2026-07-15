@@ -582,7 +582,9 @@ export const organizationQuizRouter = createTRPCRouter({
 							id: true,
 							courseId: true,
 							topicId: true,
+							difficulty: true,
 							passingScore: true,
+							topic: { select: { id: true, title: true } },
 							questions: {
 								orderBy: { orderIndex: "asc" },
 								select: {
@@ -861,11 +863,20 @@ export const organizationQuizRouter = createTRPCRouter({
 			// Completing a quiz counts toward the learning streak.
 			await recordStreakActivity(ctx.user.id);
 
+			// A topic is MASTERED once the student clears a hard quiz at or above
+			// this score. Reaching it ends the adaptive ladder for the topic:
+			// without this the loop is unbounded, because nextDifficulty() keeps
+			// returning "hard" for any mastery >= 0.8 and every submission minted
+			// another quiz forever.
+			const MASTERY_SCORE = 80;
+			const mastered =
+				attempt.quiz.difficulty === "hard" && graded.percentage >= MASTERY_SCORE;
+
 			// Generate the NEXT adaptive quiz at the new difficulty (best-effort).
 			// Done outside the grading transaction so an AI failure never rolls
 			// back the student's graded attempt.
 			let nextQuizId: string | null = null;
-			if (graded.topicId) {
+			if (graded.topicId && !mastered) {
 				try {
 					const topic = await loadTopicForGeneration(
 						prisma,
@@ -892,6 +903,28 @@ export const organizationQuizRouter = createTRPCRouter({
 				}
 			}
 
+			// Per-attempt feedback, derived from the answers we just graded rather
+			// than from a second AI call — it costs nothing, cannot fail, and is
+			// literally what the student did.
+			const topicTitle = attempt.quiz.topic?.title ?? "this topic";
+			const missed = reviewResults.filter((r) => !r.isCorrect);
+			const nailed = reviewResults.filter((r) => r.isCorrect);
+
+			const masteryPct = Math.round(graded.newMastery * 100);
+			const confidence =
+				masteryPct >= 80 ? "High" : masteryPct >= 50 ? "Building" : "Low";
+
+			let recommendation: string;
+			if (mastered) {
+				recommendation = `You've mastered ${topicTitle}. Move on to the next topic.`;
+			} else if (missed.length === 0) {
+				recommendation = `Perfect score — your next quiz steps up to ${graded.difficulty}.`;
+			} else if (graded.percentage < 50) {
+				recommendation = `Review ${topicTitle} before continuing — you missed ${missed.length} of ${reviewResults.length} questions.`;
+			} else {
+				recommendation = `Close. Revisit the ${missed.length} question${missed.length === 1 ? "" : "s"} you missed, then try the next ${graded.difficulty} quiz.`;
+			}
+
 			return {
 				attempt: graded.updatedAttempt,
 				score: graded.score,
@@ -902,6 +935,14 @@ export const organizationQuizRouter = createTRPCRouter({
 				difficultyChanged: graded.difficultyChanged,
 				nextQuizId,
 				results: reviewResults,
+				mastered,
+				report: {
+					topicTitle,
+					confidence,
+					recommendation,
+					strengths: nailed.map((r) => r.prompt).slice(0, 4),
+					weaknesses: missed.map((r) => r.prompt).slice(0, 4),
+				},
 			};
 		}),
 });

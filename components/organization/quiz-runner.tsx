@@ -1,6 +1,15 @@
 "use client";
 
-import { ArrowRightIcon, ImageIcon, SparklesIcon, XIcon } from "lucide-react";
+import {
+	ArrowRightIcon,
+	CheckCircle2Icon,
+	ImageIcon,
+	LightbulbIcon,
+	SparklesIcon,
+	TrophyIcon,
+	XCircleIcon,
+	XIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -55,6 +64,14 @@ type SubmitResult = {
 	difficultyChanged: boolean;
 	nextQuizId: string | null;
 	results: QuizReviewItem[];
+	mastered: boolean;
+	report: {
+		topicTitle: string;
+		confidence: string;
+		recommendation: string;
+		strengths: string[];
+		weaknesses: string[];
+	};
 };
 
 function toOptions(options: unknown): string[] {
@@ -116,6 +133,8 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				difficultyChanged: data.difficultyChanged,
 				nextQuizId: data.nextQuizId,
 				results: data.results,
+				mastered: data.mastered,
+				report: data.report,
 			});
 		},
 		onError: (error) => toast.error(error.message || "Could not submit quiz"),
@@ -183,48 +202,154 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 					</CardHeader>
 				</Card>
 
-				{/* The adaptive money-shot: next quiz difficulty badge. */}
-				<Card className="border-primary/40 bg-primary/5">
-					<CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
-						<div className="space-y-1">
-							<div className="flex items-center gap-2">
-								<SparklesIcon className="size-4 text-primary" />
-								<span className="font-medium text-sm">Adaptive difficulty</span>
-								{result.difficultyChanged && (
-									<Badge variant="outline" className="text-xs">
-										Updated
+				{/* Mastered: the ladder ends here. No further quizzes are generated
+				    for this topic — the student gets a verdict, not another quiz. */}
+				{result.mastered ? (
+					<Card className="border-emerald-500/40 bg-emerald-500/5">
+						<CardHeader>
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div className="flex items-center gap-2">
+									<TrophyIcon className="size-5 text-emerald-600" />
+									<CardTitle className="text-emerald-700 dark:text-emerald-400">
+										Topic Mastered
+									</CardTitle>
+								</div>
+								<div className="flex items-center gap-2">
+									<Badge variant="outline">
+										Overall {Math.round(result.mastery * 100)}%
 									</Badge>
+									<Badge variant="outline">
+										Confidence: {result.report.confidence}
+									</Badge>
+								</div>
+							</div>
+							<CardDescription>
+								You've cleared {result.report.topicTitle} at hard difficulty.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-5">
+							{result.report.strengths.length > 0 && (
+								<div className="space-y-2">
+									<p className="flex items-center gap-2 font-medium text-sm">
+										<CheckCircle2Icon className="size-4 text-emerald-600" />
+										Strengths
+									</p>
+									<ul className="space-y-1">
+										{result.report.strengths.map((s) => (
+											<li
+												key={s}
+												className="text-muted-foreground text-sm leading-snug"
+											>
+												• {s}
+											</li>
+										))}
+									</ul>
+								</div>
+							)}
+
+							{result.report.weaknesses.length > 0 && (
+								<div className="space-y-2">
+									<p className="flex items-center gap-2 font-medium text-sm">
+										<XCircleIcon className="size-4 text-rose-500" />
+										Worth revising
+									</p>
+									<ul className="space-y-1">
+										{result.report.weaknesses.map((w) => (
+											<li
+												key={w}
+												className="text-muted-foreground text-sm leading-snug"
+											>
+												• {w}
+											</li>
+										))}
+									</ul>
+								</div>
+							)}
+
+							<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-4">
+								<p className="flex items-center gap-2 text-sm">
+									<LightbulbIcon className="size-4 shrink-0 text-amber-500" />
+									{result.report.recommendation}
+								</p>
+								<Button asChild>
+									<Link href="/dashboard/organization/courses">
+										Continue to Next Topic
+										<ArrowRightIcon className="size-4" />
+									</Link>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				) : (
+					/* The adaptive money-shot: next quiz difficulty badge. */
+					<Card className="border-primary/40 bg-primary/5">
+						<CardContent className="space-y-4 py-5">
+							<div className="flex flex-wrap items-center justify-between gap-4">
+								<div className="space-y-1">
+									<div className="flex items-center gap-2">
+										<SparklesIcon className="size-4 text-primary" />
+										<span className="font-medium text-sm">
+											Adaptive difficulty
+										</span>
+										{result.difficultyChanged && (
+											<Badge variant="outline" className="text-xs">
+												Updated
+											</Badge>
+										)}
+									</div>
+									<p className="text-muted-foreground text-sm">
+										Mastery {Math.round(result.mastery * 100)}% · confidence{" "}
+										{result.report.confidence.toLowerCase()} · your next quiz is
+										set to
+									</p>
+									<Badge
+										className={cn(
+											"px-3 py-1 text-sm uppercase tracking-wide",
+											DIFFICULTY_STYLES[result.difficulty],
+										)}
+									>
+										{result.difficulty}
+									</Badge>
+								</div>
+								{result.nextQuizId ? (
+									<Button asChild>
+										<Link
+											href={`/dashboard/organization/quizzes/${result.nextQuizId}/take`}
+										>
+											Next quiz ready
+											<ArrowRightIcon className="size-4" />
+										</Link>
+									</Button>
+								) : (
+									<span className="text-muted-foreground text-sm">
+										Generating your next quiz…
+									</span>
 								)}
 							</div>
-							<p className="text-muted-foreground text-sm">
-								Mastery {Math.round(result.mastery * 100)}% · your next quiz is
-								set to
+
+							{result.report.weaknesses.length > 0 && (
+								<div className="space-y-1 border-t pt-3">
+									<p className="font-medium text-sm">You struggled with</p>
+									<ul className="space-y-1">
+										{result.report.weaknesses.slice(0, 3).map((w) => (
+											<li
+												key={w}
+												className="text-muted-foreground text-sm leading-snug"
+											>
+												• {w}
+											</li>
+										))}
+									</ul>
+								</div>
+							)}
+
+							<p className="flex items-center gap-2 rounded-lg border bg-background p-3 text-sm">
+								<LightbulbIcon className="size-4 shrink-0 text-amber-500" />
+								{result.report.recommendation}
 							</p>
-							<Badge
-								className={cn(
-									"px-3 py-1 text-sm uppercase tracking-wide",
-									DIFFICULTY_STYLES[result.difficulty],
-								)}
-							>
-								{result.difficulty}
-							</Badge>
-						</div>
-						{result.nextQuizId ? (
-							<Button asChild>
-								<Link
-									href={`/dashboard/organization/quizzes/${result.nextQuizId}/take`}
-								>
-									Next quiz ready
-									<ArrowRightIcon className="size-4" />
-								</Link>
-							</Button>
-						) : (
-							<span className="text-muted-foreground text-sm">
-								Generating your next quiz…
-							</span>
-						)}
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
+				)}
 
 				<div className="space-y-3">
 					<h3 className="font-medium">Review</h3>
