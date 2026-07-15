@@ -2,6 +2,7 @@
 
 import NiceModal from "@ebay/nice-modal-react";
 import {
+	BookOpenIcon,
 	CheckCircle2Icon,
 	ClockIcon,
 	FileTextIcon,
@@ -9,6 +10,7 @@ import {
 	SparklesIcon,
 	TrashIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 import { MaterialsModal } from "@/components/organization/materials-modal";
@@ -177,7 +179,7 @@ export function CourseDetail({ courseId }: { courseId: string }) {
 				) : (
 					<ul className="grid gap-2 sm:grid-cols-2">
 						{(topicsData?.topics ?? []).map((t) => (
-							<li key={t.id} className="rounded-lg border p-3">
+							<li key={t.id} className="flex flex-col rounded-lg border p-3">
 								<div className="flex items-center justify-between gap-2">
 									<p className="font-medium text-sm">{t.title}</p>
 									<Badge variant="outline" className="shrink-0">
@@ -190,6 +192,17 @@ export function CourseDetail({ courseId }: { courseId: string }) {
 										{t.summary}
 									</p>
 								)}
+								<Button
+									asChild
+									size="sm"
+									variant="secondary"
+									className="mt-3 self-start"
+								>
+									<Link href={`/dashboard/organization/topics/${t.id}`}>
+										<BookOpenIcon className="size-3.5" />
+										Learn this topic
+									</Link>
+								</Button>
 							</li>
 						))}
 					</ul>

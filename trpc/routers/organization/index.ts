@@ -20,6 +20,7 @@ import { organizationMaterialRouter } from "@/trpc/routers/organization/organiza
 import { organizationQuizRouter } from "@/trpc/routers/organization/organization-quiz-router";
 import { organizationStudyPlanRouter } from "@/trpc/routers/organization/organization-studyplan-router";
 import { organizationSubscriptionRouter } from "@/trpc/routers/organization/organization-subscription-router";
+import { organizationTopicRouter } from "@/trpc/routers/organization/organization-topic-router";
 
 async function generateOrganizationSlug(name: string): Promise<string> {
 	const baseSlug = slugify(name, {
@@ -127,4 +128,5 @@ export const organizationRouter = createTRPCRouter({
 	quiz: organizationQuizRouter,
 	studyPlan: organizationStudyPlanRouter,
 	subscription: organizationSubscriptionRouter,
+	topic: organizationTopicRouter,
 });

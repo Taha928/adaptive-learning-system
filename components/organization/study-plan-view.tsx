@@ -2,6 +2,7 @@
 
 import NiceModal from "@ebay/nice-modal-react";
 import {
+	BookOpenIcon,
 	CalendarIcon,
 	CheckCircle2Icon,
 	CircleIcon,
@@ -9,6 +10,7 @@ import {
 	SparklesIcon,
 	Trash2Icon,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/confirmation-modal";
@@ -225,9 +227,13 @@ export function StudyPlanView() {
 																{item.title}
 															</p>
 															{item.topicId && (
-																<p className="text-muted-foreground text-xs">
-																	Linked topic
-																</p>
+																<Link
+																	href={`/dashboard/organization/topics/${item.topicId}`}
+																	className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
+																>
+																	<BookOpenIcon className="size-3" />
+																	Learn this topic
+																</Link>
 															)}
 														</div>
 													</div>

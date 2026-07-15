@@ -36,8 +36,10 @@ export const studyPlanGenerationSchema = z.object({
 			}),
 		)
 		.min(1)
-		.max(20)
-		.describe("Ordered list of study steps, weakest areas first"),
+		.max(40)
+		.describe(
+			"Ordered study steps. Must include one step for EVERY provided course topic — none may be left out — plus an optional final review step.",
+		),
 });
 
 export type StudyPlanGeneration = z.infer<typeof studyPlanGenerationSchema>;
@@ -128,13 +130,24 @@ function buildPrompt(params: {
 			: "No clear weak topics were detected from performance history.",
 		"",
 		allLines.length > 0
-			? `All available course topics:\n${allLines.join("\n")}`
+			? `All ${allLines.length} topics in this course:\n${allLines.join("\n")}`
 			: "No course topics are available; create a sensible generic roadmap toward the goal.",
 		"",
-		"Produce an ordered study roadmap. Start with the weakest areas, build up",
-		"to mastery, and finish with consolidation/review. When a step maps to one",
-		"of the available topics above, set its topicTitle to that topic's exact",
-		"title so it can be linked.",
+		"Produce an ordered study roadmap for THIS COURSE ONLY.",
+		"",
+		allLines.length > 0
+			? [
+					`COVERAGE IS MANDATORY: the plan must contain one step for every one of`,
+					`the ${allLines.length} topics listed above. Do not omit, merge or skip any`,
+					"topic, however easy it looks. Order them so the weakest areas come",
+					"first and the rest follow in a sensible learning sequence, then you may",
+					"add a single final consolidation/review step.",
+					"",
+					"For every step that corresponds to a topic above, set topicTitle to that",
+					"topic's EXACT title, character for character, so it can be linked. Do",
+					"not paraphrase or reword the title.",
+				].join("\n")
+			: "Build up to mastery and finish with consolidation/review.",
 	].join("\n");
 }
 
