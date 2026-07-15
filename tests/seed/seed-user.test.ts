@@ -148,7 +148,6 @@ describe.runIf(process.env.SEED_DB === "true")("seed default user", () => {
 
 		expect(user.emailVerified).toBe(true);
 
-		// biome-ignore lint/suspicious/noConsole: seed script needs to print credentials
 		console.log(
 			`\n✅ Seeded logins (org: ${ORG_NAME})\n` +
 				`   INSTRUCTOR  ${EMAIL} / ${PASSWORD}\n` +

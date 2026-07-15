@@ -8,6 +8,7 @@ import type { NextConfig } from "next";
 import "./lib/env";
 
 const nextConfig: NextConfig = {
+	devIndicators: false,
 	serverExternalPackages: ["natural", "picocolors", "pino", "thread-stream"],
 	experimental: {
 		optimizePackageImports: ["recharts", "lucide-react", "date-fns"],

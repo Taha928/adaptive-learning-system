@@ -17,7 +17,6 @@ describe.runIf(process.env.AI_SMOKE === "true")(
 				system: TUTOR_SYSTEM_PROMPT,
 				prompt: "Reply with exactly: TUTOR_OK",
 			});
-			// biome-ignore lint/suspicious/noConsole: smoke test output
 			console.log("CHAT:", text);
 			expect(text.length).toBeGreaterThan(0);
 		});
@@ -40,7 +39,6 @@ describe.runIf(process.env.AI_SMOKE === "true")(
 				prompt:
 					"Create 2 easy multiple-choice questions about photosynthesis. Each has 4 options and one correct answer.",
 			});
-			// biome-ignore lint/suspicious/noConsole: smoke test output
 			console.log("QUIZ:", JSON.stringify(object, null, 2));
 			expect(object.questions.length).toBeGreaterThan(0);
 		}, 30000);

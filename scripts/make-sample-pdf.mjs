@@ -41,12 +41,12 @@ const lines = [
 	"genetically distinct haploid gametes used in sexual reproduction.",
 ];
 
-const escape = (s) =>
+const escapePdfText = (s) =>
 	s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 
 let content = "BT\n/F1 11 Tf\n16 TL\n72 760 Td\n";
 for (const line of lines) {
-	content += `(${escape(line)}) Tj\nT*\n`;
+	content += `(${escapePdfText(line)}) Tj\nT*\n`;
 }
 content += "ET";
 

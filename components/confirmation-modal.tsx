@@ -23,11 +23,13 @@ export type ConfirmationModalProps = NiceModalHocProps & {
 	confirmLabel?: string;
 	destructive?: boolean;
 	requiredText?: string;
+	// Returning `false` keeps the modal open; anything else closes it.
 	onConfirm: () =>
 		| void
 		| boolean
 		| undefined
-		| Promise<void | boolean | undefined>;
+		| Promise<void>
+		| Promise<boolean | undefined>;
 	dismissible?: boolean;
 };
 
@@ -40,7 +42,6 @@ export const ConfirmationModal = NiceModal.create<ConfirmationModalProps>(
 		destructive,
 		requiredText,
 		onConfirm,
-		dismissible = true,
 	}) => {
 		const modal = useEnhancedModal();
 		const [textInput, setTextInput] = React.useState("");
