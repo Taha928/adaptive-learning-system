@@ -66,8 +66,13 @@ export type SubmitAttemptInput = z.infer<typeof submitAttemptSchema>;
 export type ListMyAttemptsInput = z.infer<typeof listMyAttemptsSchema>;
 export type AttemptIdInput = z.infer<typeof attemptIdSchema>;
 
-// Generate a Q&A practice set spanning every topic in a course.
+// Generate a written Q&A practice set spanning every topic in a course.
+// `difficulty: "adaptive"` ramps easy -> medium -> hard across the set; the
+// student may instead pin every question to a single level.
 export const generateCourseQASchema = z.object({
 	courseId: z.string().uuid(),
-	questionsPerTopic: z.number().int().min(1).max(5).default(2),
+	numQuestions: z.number().int().min(3).max(20).default(9),
+	difficulty: z
+		.enum(["adaptive", "easy", "medium", "hard"])
+		.default("adaptive"),
 });

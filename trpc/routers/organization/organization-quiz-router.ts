@@ -174,12 +174,68 @@ ${sourceText || "(No additional material provided. Generate questions based on t
 }
 
 /**
- * Build a Q&A set spanning EVERY topic in a course, rather than drilling one
- * topic. Persisted as a normal Quiz with `topicId: null` so the whole existing
- * engine — attempts, exact + AI grading, the review screen — applies unchanged.
- * A null topicId also means `submitAttempt` skips the mastery update and the
- * adaptive follow-up, which is what we want: this is practice across the
- * course, not a rung on one topic's ladder.
+ * Schema for the written Q&A set. Deliberately NOT `aiQuizSchema`: there are no
+ * options and no multiple choice — every question is answered by typing, so the
+ * AI grader does the marking and the student has to produce the idea rather
+ * than recognise it.
+ *
+ * `difficulty` and `topicTitle` are per question. Neither has a column on
+ * Question, so they are folded into the stored prompt rather than migrated —
+ * see buildQaPrompt below.
+ */
+const aiQaSchema = z.object({
+	title: z.string(),
+	questions: z
+		.array(
+			z.object({
+				topicTitle: z
+					.string()
+					.describe("Exact title of the topic this question comes from"),
+				difficulty: z.enum(["easy", "medium", "hard"]),
+				type: z.enum(["shortAnswer", "longAnswer"]),
+				prompt: z
+					.string()
+					.describe("The question itself, with no topic or difficulty prefix"),
+				correctAnswer: z
+					.string()
+					.describe(
+						"A model answer / marking rubric describing what a correct response must contain",
+					),
+				explanation: z
+					.string()
+					.describe("Why that is the answer — this is where the student learns"),
+			}),
+		)
+		.min(1),
+});
+
+const QA_DIFFICULTY_ORDER: Record<string, number> = {
+	easy: 0,
+	medium: 1,
+	hard: 2,
+};
+
+/** Human label folded into the prompt, since Question has no difficulty column. */
+function buildQaPrompt(q: {
+	difficulty: string;
+	topicTitle: string;
+	prompt: string;
+}): string {
+	const level = q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1);
+	return `[${level} · ${q.topicTitle}]\n\n${q.prompt}`;
+}
+
+/**
+ * Build a written Q&A set spanning EVERY topic in a course.
+ *
+ * Persisted as a normal Quiz with `topicId: null`, so the existing engine —
+ * attempts, AI grading of free responses, the review screen — applies
+ * unchanged, and `submitAttempt` correctly skips the per-topic mastery update
+ * and adaptive follow-up (this practises a whole course, not one topic).
+ *
+ * Adaptivity here is the ramp WITHIN the set: easy questions first, then
+ * medium, then hard, so the student warms up before being stretched. A student
+ * who wants to drill one level can pin the difficulty instead.
  */
 async function generateCourseQA(params: {
 	organizationId: string;
@@ -187,18 +243,18 @@ async function generateCourseQA(params: {
 	courseId: string;
 	courseTitle: string;
 	topics: { title: string; summary: string | null }[];
-	questionsPerTopic: number;
-}): Promise<string> {
+	numQuestions: number;
+	difficulty: "adaptive" | "easy" | "medium" | "hard";
+}): Promise<{ quizId: string; questionCount: number }> {
 	const {
 		organizationId,
 		createdById,
 		courseId,
 		courseTitle,
 		topics,
-		questionsPerTopic,
+		numQuestions,
+		difficulty,
 	} = params;
-
-	const total = topics.length * questionsPerTopic;
 
 	// One block per topic, bounded overall so we stay inside the context budget
 	// however many topics the course has.
@@ -217,28 +273,86 @@ async function generateCourseQA(params: {
 		)
 		.join("\n\n");
 
-	const prompt = `Create a ${total}-question Q&A practice set for the course "${courseTitle}".
+	const adaptive = difficulty === "adaptive";
+	const easyN = Math.ceil(numQuestions / 3);
+	const mediumN = Math.ceil((numQuestions - easyN) / 2);
+	const hardN = numQuestions - easyN - mediumN;
 
-COVERAGE IS MANDATORY: produce exactly ${questionsPerTopic} question(s) for EACH of the ${topics.length} topics listed below — ${total} questions in total. Do not skip a topic and do not over-weight one.
+	const difficultyRule = adaptive
+		? [
+				"DIFFICULTY RAMP: the set must build up.",
+				`- Exactly ${easyN} question(s) with difficulty "easy" — recall and definitions.`,
+				`- Exactly ${mediumN} question(s) with difficulty "medium" — apply the idea or explain why.`,
+				`- Exactly ${hardN} question(s) with difficulty "hard" — analyse, compare, or reason about a scenario.`,
+				`That is ${easyN} + ${mediumN} + ${hardN} = ${numQuestions} questions.`,
+				"Return them in that order: all easy, then all medium, then all hard.",
+			].join("\n")
+		: `DIFFICULTY: all ${numQuestions} questions must be "${difficulty}". Do not vary it.`;
 
-Order the questions topic by topic, following the order given. Begin each question's prompt with its topic name followed by " — " so the student can see which topic it came from.
+	const prompt = `Create a WRITTEN Q&A practice set for the course "${courseTitle}" containing EXACTLY ${numQuestions} questions.
 
-Use ONLY the material below as the source of truth. Mix the question types:
-- Most should be "multipleChoice" with 3-4 options.
-- Include some "trueFalse" questions whose options are exactly ["True","False"].
-- Include at least one "shortAnswer" question with an empty options array and a short (1-3 word) correctAnswer.
+The count is not a suggestion: the questions array must have exactly ${numQuestions} entries — no fewer, no more.
 
-For multipleChoice and trueFalse, the "correctAnswer" MUST exactly match one of the provided options. Give a short explanation for every answer — this is a practice set, so the explanation is where the student actually learns.
+Every question is answered by typing — there is NO multiple choice, no true/false, and no options. Use type "shortAnswer" for a phrase-or-sentence answer and "longAnswer" where the student should reason in a short paragraph. Ask questions that make the student explain, apply or justify, not just name.
+
+COVERAGE IS MANDATORY: the ${numQuestions} questions must together cover ALL ${topics.length} topics below, spread as evenly as the count allows. Do not skip a topic and do not over-weight one. Set topicTitle to the topic's exact title. Between them, the questions should touch the core concepts of the material rather than clustering on one corner of it.
+
+${difficultyRule}
+
+Use ONLY the material below as the source of truth. For every question set correctAnswer to a model answer / rubric saying what a correct response must contain — the AI grader marks the student's typing against it — and give an explanation the student can learn from.
 
 Topics:
-${topicBlocks}`;
+${topicBlocks}
 
-	const { object } = await generateObject({
-		model: tutorModel(),
-		system: TUTOR_SYSTEM_PROMPT,
-		schema: aiQuizSchema,
-		prompt,
-	});
+Reminder: return exactly ${numQuestions} questions.`;
+
+	// The student picked the question count, so it has to hold. OpenAI strict
+	// structured output ignores array length constraints (minItems/maxItems are
+	// unsupported keywords), so the schema cannot enforce this — the model
+	// routinely returns one short. Ask once, and retry once if the count is
+	// wrong; a surplus we can simply trim.
+	let object = (
+		await generateObject({
+			model: tutorModel(),
+			system: TUTOR_SYSTEM_PROMPT,
+			schema: aiQaSchema,
+			prompt,
+		})
+	).object;
+
+	if (object.questions.length < numQuestions) {
+		logger.warn(
+			{ asked: numQuestions, got: object.questions.length, courseId },
+			"Q&A generation returned the wrong count; retrying once",
+		);
+		const retry = await generateObject({
+			model: tutorModel(),
+			system: TUTOR_SYSTEM_PROMPT,
+			schema: aiQaSchema,
+			prompt: `${prompt}\n\nYour previous attempt returned ${object.questions.length} questions. That was wrong. Return exactly ${numQuestions}.`,
+		});
+		// Keep whichever attempt is closer to what the student asked for.
+		if (retry.object.questions.length > object.questions.length) {
+			object = retry.object;
+		}
+	}
+
+	// Enforce the ramp ourselves rather than trusting the model to order it.
+	const sorted = adaptive
+		? [...object.questions].sort(
+				(a, b) =>
+					(QA_DIFFICULTY_ORDER[a.difficulty] ?? 0) -
+					(QA_DIFFICULTY_ORDER[b.difficulty] ?? 0),
+			)
+		: object.questions;
+
+	// Trim a surplus. A shortfall we cannot invent, so the caller reports the
+	// real count rather than the requested one.
+	const ordered = sorted.slice(0, numQuestions);
+
+	// The Quiz row carries one difficulty; for a ramped set the honest summary
+	// is "medium", since it spans all three.
+	const quizDifficulty = (adaptive ? "medium" : difficulty) as QuizDifficulty;
 
 	const quiz = await prisma.quiz.create({
 		data: {
@@ -247,21 +361,22 @@ ${topicBlocks}`;
 			topicId: null,
 			createdById,
 			title: object.title || `Q&A — ${courseTitle}`,
-			description: `Practice questions across all ${topics.length} topics in ${courseTitle}.`,
-			difficulty: "medium" as QuizDifficulty,
+			description: adaptive
+				? `Written Q&A across all ${topics.length} topics in ${courseTitle}, ramping easy → medium → hard.`
+				: `Written ${difficulty} Q&A across all ${topics.length} topics in ${courseTitle}.`,
+			difficulty: quizDifficulty,
 			isAiGenerated: true,
 			status: QuizStatus.published,
 			questions: {
-				create: object.questions.map((q, index) => ({
+				create: ordered.map((q, index) => ({
 					organizationId,
-					prompt: q.prompt,
-					type: AI_TYPE_TO_DB[q.type] ?? QuestionType.multipleChoice,
-					options:
-						q.type === "shortAnswer" ||
-						q.type === "longAnswer" ||
-						q.options.length === 0
-							? undefined
-							: (q.options as Prisma.InputJsonValue),
+					prompt: buildQaPrompt(q),
+					type:
+						q.type === "longAnswer"
+							? QuestionType.longAnswer
+							: QuestionType.shortAnswer,
+					// Written answers carry no options.
+					options: undefined,
 					correctAnswer: q.correctAnswer,
 					explanation: q.explanation,
 					points: 1,
@@ -272,7 +387,7 @@ ${topicBlocks}`;
 		select: { id: true },
 	});
 
-	return quiz.id;
+	return { quizId: quiz.id, questionCount: ordered.length };
 }
 
 /** Load a topic (org-scoped) with the fields needed for generation. */
@@ -625,16 +740,22 @@ export const organizationQuizRouter = createTRPCRouter({
 			}
 
 			try {
-				const quizId = await generateCourseQA({
+				const { quizId, questionCount } = await generateCourseQA({
 					organizationId: ctx.organization.id,
 					createdById: ctx.user.id,
 					courseId: course.id,
 					courseTitle: course.title,
 					topics,
-					questionsPerTopic: input.questionsPerTopic,
+					numQuestions: input.numQuestions,
+					difficulty: input.difficulty,
 				});
 
-				return { quizId, topicCount: topics.length };
+				return {
+					quizId,
+					topicCount: topics.length,
+					// The count actually produced, not the count requested.
+					numQuestions: questionCount,
+				};
 			} catch (error) {
 				logger.error(
 					{ error, courseId: course.id, organizationId: ctx.organization.id },

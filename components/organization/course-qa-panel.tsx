@@ -20,6 +20,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -29,19 +30,33 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/trpc/client";
 
-const PER_TOPIC_OPTIONS = [1, 2, 3, 5];
+const COUNT_OPTIONS = [3, 5, 9, 12, 15, 20];
+
+const DIFFICULTY_OPTIONS = [
+	{
+		value: "adaptive",
+		label: "Adaptive — easy → medium → hard",
+		hint: "Warms you up, then stretches you",
+	},
+	{ value: "easy", label: "Easy only", hint: "Recall and definitions" },
+	{ value: "medium", label: "Medium only", hint: "Apply and explain" },
+	{ value: "hard", label: "Hard only", hint: "Analyse and reason" },
+] as const;
+
+type QaDifficulty = (typeof DIFFICULTY_OPTIONS)[number]["value"];
 
 /**
- * Q&A practice across a whole course: one question set drawn from every topic,
- * answered and marked with the same engine as quizzes (exact match for MCQ and
- * true/false, AI grading for written answers), then reviewed question by
- * question.
+ * Written Q&A practice across a whole course. Every question is typed — no
+ * multiple choice — so the AI grader marks what the student actually produced.
+ * Questions are drawn from every topic and, by default, ramp easy → medium →
+ * hard across the set.
  */
 export function CourseQaPanel() {
 	const router = useRouter();
 	const utils = trpc.useUtils();
 	const [courseId, setCourseId] = useState<string>("");
-	const [perTopic, setPerTopic] = useState<number>(2);
+	const [numQuestions, setNumQuestions] = useState<number>(9);
+	const [difficulty, setDifficulty] = useState<QaDifficulty>("adaptive");
 
 	const { data: courseData, isPending } =
 		trpc.organization.course.list.useQuery({});
@@ -57,7 +72,9 @@ export function CourseQaPanel() {
 
 	const generateMutation = trpc.organization.quiz.generateCourseQA.useMutation({
 		onSuccess: (res) => {
-			toast.success(`Q&A ready — covering all ${res.topicCount} topics`);
+			toast.success(
+				`${res.numQuestions} questions ready — covering all ${res.topicCount} topics`,
+			);
 			utils.organization.quiz.list.invalidate();
 			router.push(`/dashboard/organization/quizzes/${res.quizId}/take`);
 		},
@@ -75,83 +92,139 @@ export function CourseQaPanel() {
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<MessagesSquareIcon className="size-5 text-primary" />
-						Practise across a whole course
+						Write your answers
 					</CardTitle>
 					<CardDescription>
-						Get questions drawn from every topic in a course, answer them, and
-						see exactly which ones you got right and where you slipped — with an
-						explanation for each.
+						The tutor writes questions covering every topic in the course. You
+						answer them in your own words — no multiple choice — and it marks
+						what you wrote, question by question, explaining where you were
+						right and where you slipped.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-						<Select
-							value={courseId}
-							onValueChange={setCourseId}
-							disabled={generateMutation.isPending || courses.length === 0}
-						>
-							<SelectTrigger className="sm:w-[240px]">
-								<SelectValue
-									placeholder={
-										courses.length === 0 ? "No courses yet" : "Choose a course"
-									}
-								/>
-							</SelectTrigger>
-							<SelectContent>
-								{courses.map((c) => (
-									<SelectItem key={c.id} value={c.id}>
-										{c.title}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+					<div className="grid gap-3 sm:grid-cols-3">
+						<div className="space-y-1.5">
+							<Label htmlFor="qa-course">Course</Label>
+							<Select
+								value={courseId}
+								onValueChange={setCourseId}
+								disabled={generateMutation.isPending || courses.length === 0}
+							>
+								<SelectTrigger id="qa-course">
+									<SelectValue
+										placeholder={
+											courses.length === 0 ? "No courses yet" : "Choose a course"
+										}
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									{courses.map((c) => (
+										<SelectItem key={c.id} value={c.id}>
+											{c.title}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 
-						<Select
-							value={String(perTopic)}
-							onValueChange={(v) => setPerTopic(Number(v))}
-							disabled={generateMutation.isPending}
-						>
-							<SelectTrigger className="sm:w-[190px]">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{PER_TOPIC_OPTIONS.map((n) => (
-									<SelectItem key={n} value={String(n)}>
-										{n} question{n === 1 ? "" : "s"} per topic
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<div className="space-y-1.5">
+							<Label htmlFor="qa-count">How many questions</Label>
+							<Select
+								value={String(numQuestions)}
+								onValueChange={(v) => setNumQuestions(Number(v))}
+								disabled={generateMutation.isPending}
+							>
+								<SelectTrigger id="qa-count">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{COUNT_OPTIONS.map((n) => (
+										<SelectItem key={n} value={String(n)}>
+											{n} questions
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 
+						<div className="space-y-1.5">
+							<Label htmlFor="qa-difficulty">Difficulty</Label>
+							<Select
+								value={difficulty}
+								onValueChange={(v) => setDifficulty(v as QaDifficulty)}
+								disabled={generateMutation.isPending}
+							>
+								<SelectTrigger id="qa-difficulty">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{DIFFICULTY_OPTIONS.map((d) => (
+										<SelectItem key={d.value} value={d.value}>
+											{d.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="text-muted-foreground text-sm">
+							{courseId && topicCount === 0 ? (
+								<span>
+									This course has no topics yet — add a material and use
+									“Generate Topics” first.
+								</span>
+							) : courseId ? (
+								<span>
+									<strong>{numQuestions}</strong> written questions across all{" "}
+									<strong>{topicCount}</strong> topics ·{" "}
+									{difficulty === "adaptive" ? (
+										<>
+											ramps{" "}
+											<Badge variant="outline" className="mx-0.5">
+												easy
+											</Badge>
+											→
+											<Badge variant="outline" className="mx-0.5">
+												medium
+											</Badge>
+											→
+											<Badge variant="outline" className="mx-0.5">
+												hard
+											</Badge>
+										</>
+									) : (
+										<>
+											all{" "}
+											<Badge variant="outline" className="mx-0.5">
+												{difficulty}
+											</Badge>
+										</>
+									)}
+								</span>
+							) : (
+								<span>Pick a course to begin.</span>
+							)}
+						</div>
 						<Button
 							onClick={() =>
-								generateMutation.mutate({ courseId, questionsPerTopic: perTopic })
+								generateMutation.mutate({ courseId, numQuestions, difficulty })
 							}
 							loading={generateMutation.isPending}
 							disabled={
 								generateMutation.isPending || !courseId || topicCount === 0
 							}
-							className="sm:ml-auto"
 						>
 							<SparklesIcon className="size-4" />
-							Generate Q&A
+							Generate questions
 						</Button>
 					</div>
 
-					{courseId && topicCount === 0 && (
-						<p className="text-muted-foreground text-sm">
-							This course has no topics yet — add a material and use “Generate
-							Topics” first.
-						</p>
-					)}
-
-					{courseId && topicCount > 0 && (
-						<p className="text-muted-foreground text-sm">
-							Covers all <strong>{topicCount}</strong> topics ·{" "}
-							<strong>{topicCount * perTopic}</strong> questions ·{" "}
-							{generateMutation.isPending
-								? "building your set…"
-								: "takes about 15–30 seconds"}
+					{generateMutation.isPending && (
+						<p className="text-muted-foreground text-xs">
+							Writing {numQuestions} questions from your material… about 20–40
+							seconds.
 						</p>
 					)}
 				</CardContent>
@@ -210,10 +283,17 @@ export function CourseQaPanel() {
 				<CardContent className="flex gap-3 py-4">
 					<CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
 					<p className="text-muted-foreground text-sm">
-						Multiple-choice and true/false are marked instantly; written answers
-						are marked by the AI tutor, which explains why your answer did or
-						didn't work. Your review shows every question with the correct answer
-						beside yours.
+						Every answer is marked by the AI tutor against a model answer, so it
+						judges your reasoning rather than a matching string. Your review
+						shows each question with your answer, the model answer and why —
+						and every attempt is kept in{" "}
+						<Link
+							href="/dashboard/organization/report"
+							className="text-primary hover:underline"
+						>
+							Progress Report
+						</Link>
+						.
 					</p>
 				</CardContent>
 			</Card>
