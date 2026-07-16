@@ -578,6 +578,17 @@ enum QuizDifficulty {
     hard
 }
 
+/**
+ * What a set of questions is FOR. Both are served by the same adaptive engine;
+ * they differ in presentation, not mechanism.
+ *   assessment — measures you. Difficulty hidden, marks withheld until the end.
+ *   revision   — teaches you. Marks and model answers shown after every answer.
+ */
+enum QuizPurpose {
+    assessment
+    revision
+}
+
 enum QuizStatus {
     draft
     published
@@ -733,7 +744,11 @@ model Quiz {
     title            String
     description      String?
     difficulty       QuizDifficulty @default(medium)
-    // An adaptive assessment serves one question at a time, choosing each from a
+    // Assessment vs revision. Distinguishing these by shape (topicId == null,
+    // all-written questions) was guesswork that mixed Q&A sets and course-wide
+    // assessments together in both listings.
+    purpose          QuizPurpose    @default(assessment)
+    // An adaptive quiz serves one question at a time, choosing each from a
     // mixed-difficulty pool based on live performance. `difficulty` above is then
     // only a nominal summary — the real level varies per Question.
     isAdaptive       Boolean        @default(false) @map("is_adaptive")

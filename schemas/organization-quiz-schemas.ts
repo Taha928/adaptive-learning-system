@@ -1,11 +1,14 @@
-import { QuizDifficulty } from "@prisma/client";
+import { QuizDifficulty, QuizPurpose } from "@prisma/client";
 import { z } from "zod/v4";
 
 // List quizzes, optionally scoped to a single course.
 // Auto-generated adaptive "next" quizzes are hidden unless includeAdaptive.
+// `purpose` keeps the Quizzes screen and the Q&A screen from showing each
+// other's sets; it defaults to assessment because that is what /quizzes shows.
 export const listQuizzesSchema = z.object({
 	courseId: z.string().uuid().optional(),
 	includeAdaptive: z.boolean().default(false),
+	purpose: z.nativeEnum(QuizPurpose).default(QuizPurpose.assessment),
 });
 
 // Get a quiz by id (also used by getForAttempt).
@@ -95,12 +98,14 @@ export type SubmitAttemptInput = z.infer<typeof submitAttemptSchema>;
 export type ListMyAttemptsInput = z.infer<typeof listMyAttemptsSchema>;
 export type AttemptIdInput = z.infer<typeof attemptIdSchema>;
 
-// Generate a written Q&A practice set spanning every topic in a course.
-// `difficulty: "adaptive"` ramps easy -> medium -> hard across the set; the
-// student may instead pin every question to a single level.
+// Generate a written revision set spanning a course (or one topic within it).
+// `difficulty: "adaptive"` builds all three tiers and lets the engine choose;
+// pinning a level builds a single-tier pool, so the same engine still runs and
+// still adapts which TOPIC to ask about — it simply has no level to vary.
 export const generateCourseQASchema = z.object({
 	courseId: z.string().uuid(),
-	numQuestions: z.number().int().min(3).max(20).default(9),
+	topicId: z.string().uuid().nullable().default(null),
+	numQuestions: z.number().int().min(5).max(20).default(9),
 	difficulty: z
 		.enum(["adaptive", "easy", "medium", "hard"])
 		.default("adaptive"),

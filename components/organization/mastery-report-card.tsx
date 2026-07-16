@@ -32,6 +32,13 @@ type Props = {
 	strong: TopicOutcomeView[];
 	weak: TopicOutcomeView[];
 	recommendation: string;
+	/**
+	 * Assessment reports a verdict (passed / not passed). Revision reports what
+	 * you now know — a revision session you scored badly on is a session that
+	 * worked, so grading it pass/fail punishes the student for revising the
+	 * things they were weakest at.
+	 */
+	variant?: "assessment" | "revision";
 };
 
 function OutcomeRow({
@@ -73,7 +80,9 @@ export function MasteryReportCard({
 	strong,
 	weak,
 	recommendation,
+	variant = "assessment",
 }: Props) {
+	const isRevision = variant === "revision";
 	return (
 		<div className="space-y-4">
 			<Card>
@@ -82,7 +91,9 @@ export function MasteryReportCard({
 						<div className="flex items-center gap-3">
 							<StudyNexMascot animated className="size-16 shrink-0" />
 							<div>
-								<CardDescription>Mastery</CardDescription>
+								<CardDescription>
+									{isRevision ? "Session complete" : "Mastery"}
+								</CardDescription>
 								<CardTitle className="text-3xl tabular-nums">
 									{percentage}%
 								</CardTitle>
@@ -91,9 +102,17 @@ export function MasteryReportCard({
 								</CardDescription>
 							</div>
 						</div>
-						<Badge variant={passed ? "default" : "destructive"}>
-							{passed ? "Passed" : "Keep practising"}
-						</Badge>
+						{isRevision ? (
+							<Badge variant="outline">
+								{weak.length === 0
+									? "Nothing left to revise"
+									: `${weak.length} area${weak.length === 1 ? "" : "s"} to revisit`}
+							</Badge>
+						) : (
+							<Badge variant={passed ? "default" : "destructive"}>
+								{passed ? "Passed" : "Keep practising"}
+							</Badge>
+						)}
 					</div>
 					<Progress value={percentage} className="mt-3" />
 				</CardHeader>

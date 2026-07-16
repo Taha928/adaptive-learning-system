@@ -5,6 +5,7 @@ import {
 	type PrismaClient,
 	QuestionType,
 	type QuizDifficulty,
+	QuizPurpose,
 	QuizStatus,
 } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
@@ -221,26 +222,63 @@ ${sourceText || "(No additional material provided. Generate questions based on t
  * smaller, tier-locked calls run in parallel and make the balance a fact rather
  * than a request.
  */
-const aiTierSchema = z.object({
-	questions: z
-		.array(
-			z.object({
-				topicTitle: z
-					.string()
-					.describe("Exact title of the topic this question comes from"),
-				prompt: z
-					.string()
-					.describe(
-						"The question itself. Must NOT mention its difficulty or topic — both are metadata, never shown to the student",
-					),
-				type: z.enum(["multipleChoice", "trueFalse", "shortAnswer"]),
-				options: z.array(z.string()).max(6),
-				correctAnswer: z.string(),
-				explanation: z.string(),
-			}),
-		)
-		.min(1),
-});
+/**
+ * What kind of questions a pool contains.
+ *   mixed   — assessments: mostly multiple choice, fast to answer, easy to mark.
+ *   written — revision: every answer typed, so the student has to produce the
+ *             idea rather than recognise it, and the AI marks against a rubric.
+ */
+type PoolStyle = "mixed" | "written";
+
+/**
+ * The tier schema, narrowed per style.
+ *
+ * Built per style rather than shared-and-widened on purpose: a revision set must
+ * NEVER contain a multiple-choice question, and the only way to guarantee that
+ * is for the enum to make it unrepresentable. Stating the rule in the prompt and
+ * repairing the output afterwards would make it a request the model can ignore.
+ * The shape is otherwise identical, so this varies the constraint, not the logic.
+ */
+function tierSchemaFor(style: PoolStyle) {
+	return z.object({
+		questions: z
+			.array(
+				z.object({
+					topicTitle: z
+						.string()
+						.describe("Exact title of the topic this question comes from"),
+					prompt: z
+						.string()
+						.describe(
+							"The question itself. Must NOT mention its difficulty or topic — both are metadata, never shown to the student",
+						),
+					type:
+						style === "written"
+							? z.enum(["shortAnswer", "longAnswer"])
+							: z.enum(["multipleChoice", "trueFalse", "shortAnswer"]),
+					options: z.array(z.string()).max(6),
+					correctAnswer: z.string(),
+					explanation: z.string(),
+				}),
+			)
+			.min(1),
+	});
+}
+
+type TierQuestion = z.infer<ReturnType<typeof tierSchemaFor>>["questions"][number];
+
+const STYLE_RULES: Record<PoolStyle, string> = {
+	mixed: `Question types:
+- Mostly "multipleChoice" with 3-4 plausible options.
+- Some "trueFalse" whose options are exactly ["True","False"].
+- A few "shortAnswer" with an empty options array and a short (1-3 word) correctAnswer.
+For multipleChoice and trueFalse the "correctAnswer" MUST exactly match one of the options.`,
+	written: `Every answer is TYPED by the student — there is nothing to choose from.
+- "options" MUST be an empty array for every question.
+- "correctAnswer" is a model answer / marking rubric describing what a correct response must contain.
+- Use "longAnswer" where the idea needs a paragraph, "shortAnswer" where a sentence or a term will do.
+- Ask the student to explain, justify or describe in their own words. Never phrase a question as "which of the following".`,
+};
 
 /** Normalised title -> id, so the model's `topicTitle` can be resolved to a row. */
 function buildTopicIndex(
@@ -303,8 +341,9 @@ async function generateTier(params: {
 	courseTitle: string;
 	topicBlocks: string;
 	topicCount: number;
-}): Promise<{ tier: Difficulty; questions: z.infer<typeof aiTierSchema>["questions"] }> {
-	const { tier, count, courseTitle, topicBlocks, topicCount } = params;
+	style: PoolStyle;
+}): Promise<{ tier: Difficulty; questions: TierQuestion[] }> {
+	const { tier, count, courseTitle, topicBlocks, topicCount, style } = params;
 
 	const prompt = `Write EXACTLY ${count} questions about the course "${courseTitle}", ALL at one single cognitive level.
 
@@ -316,11 +355,8 @@ Spread the ${count} questions across the ${topicCount} topic(s) below as evenly 
 
 CRITICAL: the student never sees the level. Never write "[Easy]", "Easy:", "Basic:", "Advanced:" or any level or topic marker inside a prompt. The prompt is only the question.
 
-Question types:
-- Mostly "multipleChoice" with 3-4 plausible options.
-- Some "trueFalse" whose options are exactly ["True","False"].
-- A few "shortAnswer" with an empty options array and a short (1-3 word) correctAnswer.
-For multipleChoice and trueFalse the "correctAnswer" MUST exactly match one of the options. Give every question a short explanation.
+${STYLE_RULES[style]}
+Give every question a short explanation — for revision this is where the student actually learns, so make it teach rather than just assert.
 
 Topics:
 ${topicBlocks}`;
@@ -328,19 +364,31 @@ ${topicBlocks}`;
 	const { object } = await generateObject({
 		model: tutorModel(),
 		system: TUTOR_SYSTEM_PROMPT,
-		schema: aiTierSchema,
+		schema: tierSchemaFor(style),
 		prompt,
 	});
 
-	return { tier, questions: object.questions };
+	// The enum already rules out choice-based types for written pools; this drops
+	// any stray options the model attaches anyway, so nothing leaks an answer.
+	const questions =
+		style === "written"
+			? object.questions.map((q) => ({ ...q, options: [] }))
+			: object.questions;
+
+	return { tier, questions };
 }
 
 /**
- * Generate an adaptive assessment: one LLM call PER DIFFICULTY TIER, run in
- * parallel, producing a pool spanning difficulty x topic. The pool is stored as
- * a normal Quiz whose questions carry their own level and topic. Nothing is
- * served yet — `startAttempt` and `answerAdaptive` select from this pool as the
- * student plays.
+ * Generate an adaptive pool: one LLM call PER DIFFICULTY TIER, run in parallel,
+ * producing questions spanning difficulty x topic. Stored as a normal Quiz whose
+ * questions carry their own level and topic. Nothing is served yet —
+ * `startAttempt` and `answerAdaptive` select from this pool as the student plays.
+ *
+ * Shared by assessments and revision sets. They differ in `style` (what the
+ * questions look like), `purpose` (how they are presented) and which `tiers`
+ * exist — never in how selection, grading or mastery work. Pinning a revision
+ * set to one difficulty simply builds a single-tier pool: the same engine still
+ * runs, it just has no level to choose between and adapts topic alone.
  */
 async function generateAdaptivePool(params: {
 	organizationId: string;
@@ -349,6 +397,12 @@ async function generateAdaptivePool(params: {
 	courseTitle: string;
 	topics: { id: string; title: string; summary: string | null }[];
 	numQuestions: number;
+	style: PoolStyle;
+	purpose: QuizPurpose;
+	/** Which levels the pool spans. One entry pins the set to that level. */
+	tiers: readonly Difficulty[];
+	title: string;
+	description: string;
 }): Promise<{ quizId: string; poolSize: number; length: number }> {
 	const {
 		organizationId,
@@ -357,9 +411,19 @@ async function generateAdaptivePool(params: {
 		courseTitle,
 		topics,
 		numQuestions,
+		style,
+		purpose,
+		tiers: wantedTiers,
+		title,
+		description,
 	} = params;
 
-	const perLevel = tierSizeFor(numQuestions, topics.length);
+	// A single-tier pool has no other level to fall back on, so it must carry the
+	// whole assessment itself rather than a third of it.
+	const perLevel =
+		wantedTiers.length === 1
+			? Math.min(12, Math.max(numQuestions + 3, 6))
+			: tierSizeFor(numQuestions, topics.length);
 
 	const topicBlocks = topics
 		.map(
@@ -368,17 +432,18 @@ async function generateAdaptivePool(params: {
 		)
 		.join("\n");
 
-	// One call per tier, concurrently: three small asks the model can actually
-	// satisfy, and a tier balance that is guaranteed by construction instead of
-	// requested in a prompt and silently ignored.
+	// One call per tier, concurrently: small asks the model can actually satisfy,
+	// and a tier balance guaranteed by construction instead of requested in a
+	// prompt and silently ignored.
 	const tiers = await Promise.all(
-		(["easy", "medium", "hard"] as const).map((tier) =>
+		wantedTiers.map((tier) =>
 			generateTier({
 				tier,
 				count: perLevel,
 				courseTitle,
 				topicBlocks,
 				topicCount: topics.length,
+				style,
 			}),
 		),
 	);
@@ -403,11 +468,14 @@ async function generateAdaptivePool(params: {
 	// Never serve a tier dry. Once the questions near a student's ability run out
 	// the engine has to serve whatever is left, which is how a struggling student
 	// ends up staring at a "design a strategy" question. The caller reports this
-	// number, so a trimmed assessment is visible rather than silent.
-	const tierCounts = (["easy", "medium", "hard"] as const).map(
+	// number, so a trimmed set is visible rather than silent.
+	const tierCounts = wantedTiers.map(
 		(tier) => usable.filter((q) => q.difficulty === tier).length,
 	);
-	const length = lengthFor(numQuestions, Math.min(...tierCounts));
+	const length =
+		wantedTiers.length === 1
+			? Math.max(MIN_ADAPTIVE_LENGTH, Math.min(numQuestions, usable.length))
+			: lengthFor(numQuestions, Math.min(...tierCounts));
 
 	const quiz = await prisma.quiz.create({
 		data: {
@@ -418,16 +486,16 @@ async function generateAdaptivePool(params: {
 			// submitAttempt, which is a different mechanism.
 			topicId: null,
 			createdById,
-			// Titled here rather than by the model: the pool comes from three
-			// separate calls, so none of them owns the assessment's name.
-			title:
-				topics.length === 1
-					? `${topics[0]!.title} — adaptive assessment`
-					: `${courseTitle} — adaptive assessment`,
-			description: `Adaptive assessment across ${topics.length} topic${topics.length === 1 ? "" : "s"} in ${courseTitle}.`,
+			// Titled here rather than by the model: the pool comes from several
+			// separate calls, so none of them owns the set's name.
+			title,
+			description,
 			// Nominal only. The real level varies per question; this is what the
-			// listing screens show.
-			difficulty: "medium" as QuizDifficulty,
+			// listing screens show. A pinned set has one real level, so say so.
+			difficulty: (wantedTiers.length === 1
+				? wantedTiers[0]
+				: "medium") as QuizDifficulty,
+			purpose,
 			isAdaptive: true,
 			adaptiveLength: length,
 			isAiGenerated: true,
@@ -440,7 +508,7 @@ async function generateAdaptivePool(params: {
 					prompt: q.prompt,
 					type: AI_TYPE_TO_DB[q.type] ?? QuestionType.multipleChoice,
 					options:
-						q.type === "shortAnswer" || q.options.length === 0
+						q.options.length === 0
 							? undefined
 							: (q.options as Prisma.InputJsonValue),
 					correctAnswer: q.correctAnswer,
@@ -457,214 +525,43 @@ async function generateAdaptivePool(params: {
 }
 
 /**
- * Schema for the written Q&A set. Deliberately NOT `aiQuizSchema`: there are no
- * options and no multiple choice — every question is answered by typing, so the
- * AI grader does the marking and the student has to produce the idea rather
- * than recognise it.
- *
- * `difficulty` and `topicTitle` are per question and now land in Question's own
- * columns. They used to be prefixed into the prompt text ("[Easy · Topic]")
- * because there was nowhere to put them; that hack is gone.
+ * Load a course and the topics a pool should span, org-scoped. `topicId` narrows
+ * it to one topic; null spans the whole course.
  */
-const aiQaSchema = z.object({
-	title: z.string(),
-	questions: z
-		.array(
-			z.object({
-				topicTitle: z
-					.string()
-					.describe("Exact title of the topic this question comes from"),
-				difficulty: z.enum(["easy", "medium", "hard"]),
-				type: z.enum(["shortAnswer", "longAnswer"]),
-				prompt: z
-					.string()
-					.describe("The question itself, with no topic or difficulty prefix"),
-				correctAnswer: z
-					.string()
-					.describe(
-						"A model answer / marking rubric describing what a correct response must contain",
-					),
-				explanation: z
-					.string()
-					.describe("Why that is the answer — this is where the student learns"),
-			}),
-		)
-		.min(1),
-});
-
-const QA_DIFFICULTY_ORDER: Record<string, number> = {
-	easy: 0,
-	medium: 1,
-	hard: 2,
-};
-
-/**
- * Build a written Q&A set spanning EVERY topic in a course.
- *
- * Persisted as a normal Quiz with `topicId: null`, so the existing engine —
- * attempts, AI grading of free responses, the review screen — applies
- * unchanged, and `submitAttempt` correctly skips the per-topic mastery update
- * and adaptive follow-up (this practises a whole course, not one topic).
- *
- * Adaptivity here is the ramp WITHIN the set: easy questions first, then
- * medium, then hard, so the student warms up before being stretched. A student
- * who wants to drill one level can pin the difficulty instead.
- */
-async function generateCourseQA(params: {
-	organizationId: string;
-	createdById: string | null;
-	courseId: string;
-	courseTitle: string;
-	topics: { id: string; title: string; summary: string | null }[];
-	numQuestions: number;
-	difficulty: "adaptive" | "easy" | "medium" | "hard";
-}): Promise<{ quizId: string; questionCount: number }> {
-	const {
-		organizationId,
-		createdById,
-		courseId,
-		courseTitle,
-		topics,
-		numQuestions,
-		difficulty,
-	} = params;
-
-	// One block per topic, bounded overall so we stay inside the context budget
-	// however many topics the course has.
-	const perTopicBudget = Math.max(
-		400,
-		Math.floor(12000 / Math.max(topics.length, 1)),
-	);
-	const topicBlocks = topics
-		.map((t, i) =>
-			[
-				`Topic ${i + 1}: ${t.title}`,
-				(t.summary ?? "").slice(0, perTopicBudget),
-			]
-				.join("\n")
-				.trim(),
-		)
-		.join("\n\n");
-
-	const adaptive = difficulty === "adaptive";
-	const easyN = Math.ceil(numQuestions / 3);
-	const mediumN = Math.ceil((numQuestions - easyN) / 2);
-	const hardN = numQuestions - easyN - mediumN;
-
-	const difficultyRule = adaptive
-		? [
-				"DIFFICULTY RAMP: the set must build up.",
-				`- Exactly ${easyN} question(s) with difficulty "easy" — recall and definitions.`,
-				`- Exactly ${mediumN} question(s) with difficulty "medium" — apply the idea or explain why.`,
-				`- Exactly ${hardN} question(s) with difficulty "hard" — analyse, compare, or reason about a scenario.`,
-				`That is ${easyN} + ${mediumN} + ${hardN} = ${numQuestions} questions.`,
-				"Return them in that order: all easy, then all medium, then all hard.",
-			].join("\n")
-		: `DIFFICULTY: all ${numQuestions} questions must be "${difficulty}". Do not vary it.`;
-
-	const prompt = `Create a WRITTEN Q&A practice set for the course "${courseTitle}" containing EXACTLY ${numQuestions} questions.
-
-The count is not a suggestion: the questions array must have exactly ${numQuestions} entries — no fewer, no more.
-
-Every question is answered by typing — there is NO multiple choice, no true/false, and no options. Use type "shortAnswer" for a phrase-or-sentence answer and "longAnswer" where the student should reason in a short paragraph. Ask questions that make the student explain, apply or justify, not just name.
-
-COVERAGE IS MANDATORY: the ${numQuestions} questions must together cover ALL ${topics.length} topics below, spread as evenly as the count allows. Do not skip a topic and do not over-weight one. Set topicTitle to the topic's exact title. Between them, the questions should touch the core concepts of the material rather than clustering on one corner of it.
-
-${difficultyRule}
-
-Use ONLY the material below as the source of truth. For every question set correctAnswer to a model answer / rubric saying what a correct response must contain — the AI grader marks the student's typing against it — and give an explanation the student can learn from.
-
-Topics:
-${topicBlocks}
-
-Reminder: return exactly ${numQuestions} questions.`;
-
-	// The student picked the question count, so it has to hold. OpenAI strict
-	// structured output ignores array length constraints (minItems/maxItems are
-	// unsupported keywords), so the schema cannot enforce this — the model
-	// routinely returns one short. Ask once, and retry once if the count is
-	// wrong; a surplus we can simply trim.
-	let object = (
-		await generateObject({
-			model: tutorModel(),
-			system: TUTOR_SYSTEM_PROMPT,
-			schema: aiQaSchema,
-			prompt,
-		})
-	).object;
-
-	if (object.questions.length < numQuestions) {
-		logger.warn(
-			{ asked: numQuestions, got: object.questions.length, courseId },
-			"Q&A generation returned the wrong count; retrying once",
-		);
-		const retry = await generateObject({
-			model: tutorModel(),
-			system: TUTOR_SYSTEM_PROMPT,
-			schema: aiQaSchema,
-			prompt: `${prompt}\n\nYour previous attempt returned ${object.questions.length} questions. That was wrong. Return exactly ${numQuestions}.`,
-		});
-		// Keep whichever attempt is closer to what the student asked for.
-		if (retry.object.questions.length > object.questions.length) {
-			object = retry.object;
-		}
-	}
-
-	// Enforce the ramp ourselves rather than trusting the model to order it.
-	const sorted = adaptive
-		? [...object.questions].sort(
-				(a, b) =>
-					(QA_DIFFICULTY_ORDER[a.difficulty] ?? 0) -
-					(QA_DIFFICULTY_ORDER[b.difficulty] ?? 0),
-			)
-		: object.questions;
-
-	// Trim a surplus. A shortfall we cannot invent, so the caller reports the
-	// real count rather than the requested one.
-	const ordered = sorted.slice(0, numQuestions);
-
-	// The Quiz row carries one difficulty; for a ramped set the honest summary
-	// is "medium", since it spans all three.
-	const quizDifficulty = (adaptive ? "medium" : difficulty) as QuizDifficulty;
-
-	const qaTopicIndex = buildTopicIndex(topics);
-
-	const quiz = await prisma.quiz.create({
-		data: {
-			organizationId,
-			courseId,
-			topicId: null,
-			createdById,
-			title: object.title || `Q&A — ${courseTitle}`,
-			description: adaptive
-				? `Written Q&A across all ${topics.length} topics in ${courseTitle}, ramping easy → medium → hard.`
-				: `Written ${difficulty} Q&A across all ${topics.length} topics in ${courseTitle}.`,
-			difficulty: quizDifficulty,
-			isAiGenerated: true,
-			status: QuizStatus.published,
-			questions: {
-				create: ordered.map((q, index) => ({
-					organizationId,
-					difficulty: q.difficulty as QuizDifficulty,
-					topicId: qaTopicIndex.get(q.topicTitle.trim().toLowerCase()) ?? null,
-					prompt: q.prompt,
-					type:
-						q.type === "longAnswer"
-							? QuestionType.longAnswer
-							: QuestionType.shortAnswer,
-					// Written answers carry no options.
-					options: undefined,
-					correctAnswer: q.correctAnswer,
-					explanation: q.explanation,
-					points: 1,
-					orderIndex: index,
-				})),
-			},
-		},
-		select: { id: true },
+async function loadCourseAndTopics(
+	organizationId: string,
+	courseId: string,
+	topicId: string | null,
+) {
+	const course = await prisma.course.findFirst({
+		where: { id: courseId, organizationId },
+		select: { id: true, title: true },
 	});
 
-	return { quizId: quiz.id, questionCount: ordered.length };
+	if (!course) {
+		throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+	}
+
+	const topics = await prisma.topic.findMany({
+		where: {
+			courseId: course.id,
+			organizationId,
+			...(topicId ? { id: topicId } : {}),
+		},
+		orderBy: { orderIndex: "asc" },
+		select: { id: true, title: true, summary: true },
+	});
+
+	if (topics.length === 0) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: topicId
+				? "Topic not found in this course."
+				: "This course has no topics yet. Generate topics from a material first.",
+		});
+	}
+
+	return { course, topics };
 }
 
 /** Load a topic (org-scoped) with the fields needed for generation. */
@@ -1017,6 +914,10 @@ export const organizationQuizRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			const where: Prisma.QuizWhereInput = {
 				organizationId: ctx.organization.id,
+				// Assessments and revision sets live on different screens. Telling
+				// them apart by shape used to be guesswork — a course-wide adaptive
+				// assessment is also topicId: null, so it surfaced in the Q&A list.
+				purpose: input.purpose,
 			};
 			if (input.courseId) {
 				where.courseId = input.courseId;
@@ -1111,6 +1012,7 @@ export const organizationQuizRouter = createTRPCRouter({
 					difficulty: true,
 					isAdaptive: true,
 					adaptiveLength: true,
+					purpose: true,
 					passingScore: true,
 					timeLimitMinutes: true,
 					status: true,
@@ -1324,59 +1226,69 @@ export const organizationQuizRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	// Build a Q&A practice set covering every topic in a course. Deliberately
-	// NOT instructor-gated: this is a student practising, not authoring content.
+	// Build a written revision set covering every topic in a course.
+	//
+	// The SAME adaptive engine as an assessment — same pool generation, same
+	// selection, same grading, same per-topic mastery. Only three things differ:
+	// the questions are written rather than multiple choice, the purpose is
+	// `revision` (so marks are shown after each answer instead of withheld), and
+	// pinning a difficulty builds a single-tier pool rather than three.
+	//
+	// Deliberately NOT instructor-gated: this is a student revising, not
+	// authoring content.
 	generateCourseQA: protectedOrganizationProcedure
 		.input(generateCourseQASchema)
 		.mutation(async ({ ctx, input }) => {
-			const course = await prisma.course.findFirst({
-				where: { id: input.courseId, organizationId: ctx.organization.id },
-				select: { id: true, title: true },
-			});
+			const { course, topics } = await loadCourseAndTopics(
+				ctx.organization.id,
+				input.courseId,
+				input.topicId,
+			);
 
-			if (!course) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
-			}
+			// Pinning a level narrows the pool to one tier. The engine is unchanged:
+			// it simply has no difficulty to choose between, and adapts topic alone.
+			const adaptive = input.difficulty === "adaptive";
+			const tiers: readonly Difficulty[] =
+				input.difficulty === "adaptive"
+					? ["easy", "medium", "hard"]
+					: [input.difficulty];
 
-			const topics = await prisma.topic.findMany({
-				where: { courseId: course.id, organizationId: ctx.organization.id },
-				orderBy: { orderIndex: "asc" },
-				select: { id: true, title: true, summary: true },
-			});
-
-			if (topics.length === 0) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message:
-						"This course has no topics yet. Generate topics from a material first.",
-				});
-			}
+			const scope =
+				topics.length === 1 ? topics[0]!.title : `all ${topics.length} topics`;
 
 			try {
-				const { quizId, questionCount } = await generateCourseQA({
+				const { quizId, poolSize, length } = await generateAdaptivePool({
 					organizationId: ctx.organization.id,
 					createdById: ctx.user.id,
 					courseId: course.id,
 					courseTitle: course.title,
 					topics,
 					numQuestions: input.numQuestions,
-					difficulty: input.difficulty,
+					style: "written",
+					purpose: QuizPurpose.revision,
+					tiers,
+					title: `${topics.length === 1 ? topics[0]!.title : course.title} — revision`,
+					description: adaptive
+						? `Written revision across ${scope} in ${course.title}. Questions adapt to your answers.`
+						: `Written ${input.difficulty} revision across ${scope} in ${course.title}.`,
 				});
 
 				return {
 					quizId,
 					topicCount: topics.length,
-					// The count actually produced, not the count requested.
-					numQuestions: questionCount,
+					// The count actually served, not the count requested.
+					numQuestions: length,
+					requestedQuestions: input.numQuestions,
+					poolSize,
 				};
 			} catch (error) {
 				logger.error(
 					{ error, courseId: course.id, organizationId: ctx.organization.id },
-					"Failed to generate course Q&A",
+					"Failed to generate revision set",
 				);
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
-					message: "Could not build the Q&A set. Please try again.",
+					message: "Could not build the revision set. Please try again.",
 				});
 			}
 		}),
@@ -1431,33 +1343,11 @@ export const organizationQuizRouter = createTRPCRouter({
 	generateAdaptive: protectedOrganizationProcedure
 		.input(generateAdaptiveSchema)
 		.mutation(async ({ ctx, input }) => {
-			const course = await prisma.course.findFirst({
-				where: { id: input.courseId, organizationId: ctx.organization.id },
-				select: { id: true, title: true },
-			});
-
-			if (!course) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
-			}
-
-			const topics = await prisma.topic.findMany({
-				where: {
-					courseId: course.id,
-					organizationId: ctx.organization.id,
-					...(input.topicId ? { id: input.topicId } : {}),
-				},
-				orderBy: { orderIndex: "asc" },
-				select: { id: true, title: true, summary: true },
-			});
-
-			if (topics.length === 0) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: input.topicId
-						? "Topic not found in this course."
-						: "This course has no topics yet. Generate topics from a material first.",
-				});
-			}
+			const { course, topics } = await loadCourseAndTopics(
+				ctx.organization.id,
+				input.courseId,
+				input.topicId,
+			);
 
 			try {
 				const { quizId, poolSize, length } = await generateAdaptivePool({
@@ -1467,6 +1357,14 @@ export const organizationQuizRouter = createTRPCRouter({
 					courseTitle: course.title,
 					topics,
 					numQuestions: input.numQuestions,
+					style: "mixed",
+					purpose: QuizPurpose.assessment,
+					tiers: ["easy", "medium", "hard"],
+					title:
+						topics.length === 1
+							? `${topics[0]!.title} — adaptive assessment`
+							: `${course.title} — adaptive assessment`,
+					description: `Adaptive assessment across ${topics.length} topic${topics.length === 1 ? "" : "s"} in ${course.title}.`,
 				});
 
 				return {
@@ -1513,6 +1411,7 @@ export const organizationQuizRouter = createTRPCRouter({
 							courseId: true,
 							isAdaptive: true,
 							adaptiveLength: true,
+							purpose: true,
 							passingScore: true,
 							questions: {
 								orderBy: { orderIndex: "asc" },
@@ -1638,6 +1537,26 @@ export const organizationQuizRouter = createTRPCRouter({
 							priorMastery,
 						});
 
+			// THE difference between the two modules, and it lives here rather than
+			// in the client: revision marks the answer in front of the student
+			// straight away, because that is the moment they learn. An assessment
+			// withholds everything until the end — returning it and asking the UI
+			// not to render it would leak it to anyone reading the network tab.
+			const feedback =
+				attempt.quiz.purpose === QuizPurpose.revision
+					? {
+							isCorrect,
+							yourAnswer:
+								selectedOption ??
+								responseText ??
+								(responseImage ? "[Image answer]" : null),
+							correctAnswer: question.correctAnswer,
+							explanation: question.explanation,
+							aiFeedback,
+							topicTitle: question.topic?.title ?? null,
+						}
+					: null;
+
 			if (!next) {
 				const finished = await finalizeAdaptiveAttempt({
 					organizationId: ctx.organization.id,
@@ -1654,6 +1573,7 @@ export const organizationQuizRouter = createTRPCRouter({
 					answeredCount,
 					totalQuestions: answeredCount,
 					question: null,
+					feedback,
 					result: finished,
 				};
 			}
@@ -1665,6 +1585,7 @@ export const organizationQuizRouter = createTRPCRouter({
 				answeredCount,
 				totalQuestions: target,
 				question: nextQuestion ? toClientQuestion(nextQuestion) : null,
+				feedback,
 				result: null,
 			};
 		}),

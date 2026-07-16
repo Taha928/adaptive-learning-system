@@ -20,6 +20,7 @@ import {
 	type QuizReviewItem,
 	QuizReviewItems,
 } from "@/components/organization/quiz-review-items";
+import { RevisionRunner } from "@/components/organization/revision-runner";
 import { StudyNexMascot } from "@/components/studynex-mascot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,10 +72,16 @@ type SubmitResult = {
 type LoadedQuiz = RouterOutputs["organization"]["quiz"]["getForAttempt"];
 
 /**
- * Entry point for taking any quiz. An adaptive assessment has a fundamentally
- * different loop — one question at a time, each selected server-side once the
- * previous is graded — so it gets its own runner rather than a pile of
- * conditionals threaded through this one.
+ * Entry point for taking any set of questions, routed by how it should be
+ * presented rather than by how it was built:
+ *
+ *   adaptive + revision   -> RevisionRunner      (marks each answer as you go)
+ *   adaptive + assessment -> AdaptiveQuizRunner  (marks withheld until the end)
+ *   fixed                 -> FixedQuizRunner     (the whole paper at once)
+ *
+ * The first two run the same engine over the same kind of pool; only the
+ * presentation differs. The third is a genuinely different loop, which is why it
+ * is a separate component rather than a flag.
  */
 export function QuizRunner({ quizId }: { quizId: string }) {
 	const { data: quiz, isPending } =
@@ -84,8 +91,10 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 	if (!quiz) return <p className="text-muted-foreground">Quiz not found.</p>;
 
 	if (quiz.isAdaptive) {
+		const Runner =
+			quiz.purpose === "revision" ? RevisionRunner : AdaptiveQuizRunner;
 		return (
-			<AdaptiveQuizRunner
+			<Runner
 				quizId={quizId}
 				title={quiz.title}
 				totalQuestions={quiz.totalQuestions}

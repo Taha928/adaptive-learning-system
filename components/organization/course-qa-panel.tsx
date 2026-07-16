@@ -2,13 +2,13 @@
 
 import {
 	ArrowRightIcon,
+	BookOpenIcon,
 	CheckCircle2Icon,
-	MessagesSquareIcon,
 	SparklesIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,13 +30,13 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/trpc/client";
 
-const COUNT_OPTIONS = [3, 5, 9, 12, 15, 20];
+const COUNT_OPTIONS = [5, 9, 12, 15, 20];
 
 const DIFFICULTY_OPTIONS = [
 	{
 		value: "adaptive",
-		label: "Adaptive — easy → medium → hard",
-		hint: "Warms you up, then stretches you",
+		label: "Adaptive — follows your answers",
+		hint: "Starts gently and moves with you",
 	},
 	{ value: "easy", label: "Easy only", hint: "Recall and definitions" },
 	{ value: "medium", label: "Medium only", hint: "Apply and explain" },
@@ -45,16 +45,22 @@ const DIFFICULTY_OPTIONS = [
 
 type QaDifficulty = (typeof DIFFICULTY_OPTIONS)[number]["value"];
 
+const ALL_TOPICS = "__all__";
+
 /**
- * Written Q&A practice across a whole course. Every question is typed — no
- * multiple choice — so the AI grader marks what the student actually produced.
- * Questions are drawn from every topic and, by default, ramp easy → medium →
- * hard across the set.
+ * Written revision across a course. Every question is typed — no multiple
+ * choice — and marked in front of the student as they go.
+ *
+ * Runs on the same adaptive engine as the Quizzes module: questions are chosen
+ * by the student's answers, and a session updates topic mastery exactly as an
+ * assessment does. Pinning a difficulty narrows the pool to one level; the
+ * engine still adapts which topic to ask about.
  */
 export function CourseQaPanel() {
 	const router = useRouter();
 	const utils = trpc.useUtils();
 	const [courseId, setCourseId] = useState<string>("");
+	const [topicId, setTopicId] = useState<string>(ALL_TOPICS);
 	const [numQuestions, setNumQuestions] = useState<number>(9);
 	const [difficulty, setDifficulty] = useState<QaDifficulty>("adaptive");
 
@@ -62,52 +68,68 @@ export function CourseQaPanel() {
 		trpc.organization.course.list.useQuery({});
 	const courses = courseData?.courses ?? [];
 
-	// Previously generated sets for this course — a Q&A set is a quiz with no
-	// topic, which is exactly what distinguishes it from a topic drill.
-	const { data: quizData } = trpc.organization.quiz.list.useQuery(
+	const { data: topicData } = trpc.organization.quiz.listTopics.useQuery(
 		{ courseId: courseId || undefined },
 		{ enabled: Boolean(courseId) },
 	);
-	const qaSets = (quizData?.quizzes ?? []).filter((q) => q.topicId === null);
+	const topics = useMemo(() => topicData?.topics ?? [], [topicData]);
+
+	// Previously generated revision sets, filtered server-side by purpose. A
+	// course-wide adaptive ASSESSMENT is also topic-less, so telling the two
+	// apart on shape used to surface assessments in this list.
+	const { data: setData } = trpc.organization.quiz.list.useQuery(
+		{ courseId: courseId || undefined, purpose: "revision" },
+		{ enabled: Boolean(courseId) },
+	);
+	const revisionSets = setData?.quizzes ?? [];
 
 	const generateMutation = trpc.organization.quiz.generateCourseQA.useMutation({
 		onSuccess: (res) => {
-			toast.success(
-				`${res.numQuestions} questions ready — covering all ${res.topicCount} topics`,
-			);
+			const trimmed = res.numQuestions < res.requestedQuestions;
+			toast.success(`${res.numQuestions} questions ready`, {
+				description: trimmed
+					? `Your material supported ${res.numQuestions} rather than ${res.requestedQuestions}.`
+					: `Drawn from a pool of ${res.poolSize} across ${res.topicCount} topic${res.topicCount === 1 ? "" : "s"}.`,
+			});
 			utils.organization.quiz.list.invalidate();
 			router.push(`/dashboard/organization/quizzes/${res.quizId}/take`);
 		},
-		onError: (error) => toast.error(error.message || "Could not build Q&A set"),
+		onError: (error) =>
+			toast.error(error.message || "Could not build revision set"),
 	});
 
 	if (isPending) return <CenteredSpinner />;
 
-	const selected = courses.find((c) => c.id === courseId);
-	const topicCount = selected?._count.topics ?? 0;
+	const selectedCourse = courses.find((c) => c.id === courseId);
+	const topicCount = selectedCourse?._count.topics ?? 0;
+	const scopedTopicCount = topicId === ALL_TOPICS ? topicCount : 1;
 
 	return (
 		<div className="space-y-6">
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<MessagesSquareIcon className="size-5 text-primary" />
-						Write your answers
+						<BookOpenIcon className="size-5 text-primary" />
+						Revise by writing
 					</CardTitle>
 					<CardDescription>
-						The tutor writes questions covering every topic in the course. You
-						answer them in your own words — no multiple choice — and it marks
-						what you wrote, question by question, explaining where you were
-						right and where you slipped.
+						The tutor asks questions from your material and you answer in your
+						own words — no multiple choice. Each answer is marked against a model
+						answer straight away, so you see where you were right and where you
+						slipped while it still matters. What it asks next follows what you're
+						finding hard.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="grid gap-3 sm:grid-cols-3">
+					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 						<div className="space-y-1.5">
 							<Label htmlFor="qa-course">Course</Label>
 							<Select
 								value={courseId}
-								onValueChange={setCourseId}
+								onValueChange={(v) => {
+									setCourseId(v);
+									setTopicId(ALL_TOPICS);
+								}}
 								disabled={generateMutation.isPending || courses.length === 0}
 							>
 								<SelectTrigger id="qa-course">
@@ -121,6 +143,29 @@ export function CourseQaPanel() {
 									{courses.map((c) => (
 										<SelectItem key={c.id} value={c.id}>
 											{c.title}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="space-y-1.5">
+							<Label htmlFor="qa-topic">Focus</Label>
+							<Select
+								value={topicId}
+								onValueChange={setTopicId}
+								disabled={generateMutation.isPending || !courseId}
+							>
+								<SelectTrigger id="qa-topic">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={ALL_TOPICS}>
+										Whole course{topicCount ? ` (${topicCount} topics)` : ""}
+									</SelectItem>
+									{topics.map((t) => (
+										<SelectItem key={t.id} value={t.id}>
+											{t.title}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -177,26 +222,16 @@ export function CourseQaPanel() {
 								</span>
 							) : courseId ? (
 								<span>
-									<strong>{numQuestions}</strong> written questions across all{" "}
-									<strong>{topicCount}</strong> topics ·{" "}
+									<strong>{numQuestions}</strong> written questions across{" "}
+									<strong>
+										{scopedTopicCount} topic{scopedTopicCount === 1 ? "" : "s"}
+									</strong>
 									{difficulty === "adaptive" ? (
-										<>
-											ramps{" "}
-											<Badge variant="outline" className="mx-0.5">
-												easy
-											</Badge>
-											→
-											<Badge variant="outline" className="mx-0.5">
-												medium
-											</Badge>
-											→
-											<Badge variant="outline" className="mx-0.5">
-												hard
-											</Badge>
-										</>
+										<> · difficulty follows your answers</>
 									) : (
 										<>
-											all{" "}
+											{" "}
+											· all{" "}
 											<Badge variant="outline" className="mx-0.5">
 												{difficulty}
 											</Badge>
@@ -209,7 +244,12 @@ export function CourseQaPanel() {
 						</div>
 						<Button
 							onClick={() =>
-								generateMutation.mutate({ courseId, numQuestions, difficulty })
+								generateMutation.mutate({
+									courseId,
+									topicId: topicId === ALL_TOPICS ? null : topicId,
+									numQuestions,
+									difficulty,
+								})
 							}
 							loading={generateMutation.isPending}
 							disabled={
@@ -217,24 +257,23 @@ export function CourseQaPanel() {
 							}
 						>
 							<SparklesIcon className="size-4" />
-							Generate questions
+							Start revising
 						</Button>
 					</div>
 
 					{generateMutation.isPending && (
 						<p className="text-muted-foreground text-xs">
-							Writing {numQuestions} questions from your material… about 20–40
-							seconds.
+							Writing questions from your material… about 20–40 seconds.
 						</p>
 					)}
 				</CardContent>
 			</Card>
 
-			{courseId && qaSets.length > 0 && (
+			{courseId && revisionSets.length > 0 && (
 				<div className="space-y-3">
-					<h3 className="font-medium">Your Q&A sets</h3>
+					<h3 className="font-medium">Your revision sets</h3>
 					<ul className="space-y-2">
-						{qaSets.map((q) => {
+						{revisionSets.map((q) => {
 							const best = q.attempts[0];
 							return (
 								<li
@@ -244,7 +283,7 @@ export function CourseQaPanel() {
 									<div className="min-w-0">
 										<p className="truncate font-medium text-sm">{q.title}</p>
 										<p className="text-muted-foreground text-xs">
-											{q._count.questions} questions
+											{q._count.questions} questions in the pool
 										</p>
 									</div>
 									<div className="flex items-center gap-2">
@@ -253,21 +292,19 @@ export function CourseQaPanel() {
 												href={`/dashboard/organization/quizzes/attempts/${best.id}`}
 												className="inline-flex items-center gap-2 hover:underline"
 											>
-												<Badge variant={best.passed ? "default" : "destructive"}>
-													{best.percentage ?? 0}%
-												</Badge>
+												<Badge variant="outline">{best.percentage ?? 0}%</Badge>
 												<span className="text-muted-foreground text-xs">
 													Review answers
 												</span>
 											</Link>
 										) : (
-											<Badge variant="outline">Not attempted</Badge>
+											<Badge variant="outline">Not started</Badge>
 										)}
 										<Button asChild size="sm" variant="outline">
 											<Link
 												href={`/dashboard/organization/quizzes/${q.id}/take`}
 											>
-												{best ? "Retry" : "Answer"}
+												{best ? "Revise again" : "Start"}
 												<ArrowRightIcon className="size-3.5" />
 											</Link>
 										</Button>
@@ -284,9 +321,8 @@ export function CourseQaPanel() {
 					<CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
 					<p className="text-muted-foreground text-sm">
 						Every answer is marked by the AI tutor against a model answer, so it
-						judges your reasoning rather than a matching string. Your review
-						shows each question with your answer, the model answer and why —
-						and every attempt is kept in{" "}
+						judges your reasoning rather than a matching string. Each session
+						updates your topic mastery, so what you revise here shows up in{" "}
 						<Link
 							href="/dashboard/organization/report"
 							className="text-primary hover:underline"
