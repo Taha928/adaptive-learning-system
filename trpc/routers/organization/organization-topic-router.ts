@@ -1,6 +1,7 @@
 import { PerformanceEventType } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { generateLesson, type Lesson, lessonSchema } from "@/lib/ai/lesson";
+import { retrieveContext } from "@/lib/ai/retrieval";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { recordStreakActivity } from "@/lib/streak";
@@ -9,6 +10,12 @@ import {
 	topicIdSchema,
 } from "@/schemas/organization-topic-schemas";
 import { createTRPCRouter, protectedOrganizationProcedure } from "@/trpc/init";
+
+/**
+ * A lesson teaches one topic in depth, so it is worth more passages than a
+ * single tutor answer — but still a small, bounded set rather than the document.
+ */
+const LESSON_TOP_K = 8;
 
 /**
  * Topic lessons — the "teach" step.
@@ -101,7 +108,7 @@ export const organizationTopicRouter = createTRPCRouter({
 					summary: true,
 					content: true,
 					courseId: true,
-					material: { select: { extractedText: true } },
+					materialId: true,
 				},
 			});
 
@@ -115,12 +122,24 @@ export const organizationTopicRouter = createTRPCRouter({
 				return { lesson: cached, cached: true };
 			}
 
+			// Retrieve the passages about THIS topic rather than handing the model
+			// the whole material and hoping the relevant part survived truncation.
+			// Scoped to the topic's own material when it has one, so a lesson is
+			// taught from its own source rather than a similarly-worded chapter.
+			const { context } = await retrieveContext({
+				organizationId: ctx.organization.id,
+				courseId: topic.courseId,
+				materialIds: topic.materialId ? [topic.materialId] : null,
+				query: [topic.title, topic.summary].filter(Boolean).join(". "),
+				topK: LESSON_TOP_K,
+			});
+
 			let lesson: Lesson;
 			try {
 				lesson = await generateLesson({
 					topicTitle: topic.title,
 					topicSummary: topic.summary,
-					sourceText: topic.material?.extractedText ?? null,
+					sourceText: context || null,
 				});
 			} catch (error) {
 				logger.error(

@@ -370,6 +370,7 @@ model Organization {
     courses                 Course[]
     enrollments             Enrollment[]
     materials               Material[]
+    materialChunks          MaterialChunk[]
     topics                  Topic[]
     quizzes                 Quiz[]
     questions               Question[]
@@ -699,13 +700,46 @@ model Material {
 
     organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-    uploadedBy   User?        @relation("MaterialUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+    uploadedBy   User?           @relation("MaterialUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
     topics       Topic[]
+    chunks       MaterialChunk[]
 
     @@index([organizationId])
     @@index([courseId])
     @@index([organizationId, status])
     @@map("material")
+}
+
+/// A retrievable slice of a Material's extracted text, stored alongside its
+/// embedding. `Material.extractedText` remains the source of truth and is left
+/// untouched — chunks are a derived index built from it, so they can always be
+/// rebuilt by re-running indexing.
+///
+/// `embedding` is Unsupported() because Prisma has no native vector type. That
+/// means Prisma Client omits the column entirely: rows are written with raw SQL
+/// (see lib/ai/material-indexing.ts) and read back without the vector unless a
+/// raw query asks for it. Deliberate — nothing should ever be pulling 1536
+/// floats per chunk into JS by accident.
+model MaterialChunk {
+    id             String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    organizationId String                      @map("organization_id") @db.Uuid
+    materialId     String                      @map("material_id") @db.Uuid
+    chunkIndex     Int                         @map("chunk_index")
+    chunkText      String                      @map("chunk_text")
+    embedding      Unsupported("vector(1536)")
+    pageNumber     Int?                        @map("page_number")
+    heading        String?
+    createdAt      DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    material     Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+    // Retrieval is always tenant-scoped, so organizationId leads the index that
+    // Phase 2's similarity search will filter on before it ever reaches ANN.
+    @@unique([materialId, chunkIndex])
+    @@index([organizationId])
+    @@index([materialId])
+    @@map("material_chunk")
 }
 
 model Topic {

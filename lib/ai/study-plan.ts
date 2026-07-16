@@ -1,8 +1,15 @@
 import type { Prisma } from "@prisma/client";
 import { generateObject } from "ai";
 import { z } from "zod/v4";
+import { retrieveContext } from "@/lib/ai/retrieval";
+import { linkStepsToTopics } from "@/lib/ai/topic-matching";
 import { TUTOR_SYSTEM_PROMPT, tutorModel } from "@/lib/ai/tutor";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/logger";
+
+/** A roadmap needs breadth across the course, not depth on one point. */
+const PLAN_TOP_K = 8;
+const PLAN_CONTEXT_CHARS = 8_000;
 
 /**
  * Shared study-plan generation logic.
@@ -109,8 +116,9 @@ function buildPrompt(params: {
 	goal?: string | null;
 	topics: TopicLite[];
 	weakTopicIds: Set<string>;
+	context?: string;
 }): string {
-	const { goal, topics, weakTopicIds } = params;
+	const { goal, topics, weakTopicIds, context } = params;
 
 	const weakLines = topics
 		.filter((t) => weakTopicIds.has(t.id))
@@ -125,6 +133,9 @@ function buildPrompt(params: {
 			? `The learner's stated goal: ${goal}`
 			: "The learner has not stated a specific goal; infer a sensible one.",
 		"",
+		context
+			? `Excerpts from the course material most relevant to the learner's goal and weak areas. Use them to make each step concrete and specific to what this course actually teaches, rather than generic advice:\n\n${context}\n`
+			: "",
 		weakLines.length > 0
 			? `Topics the learner is weakest on (prioritise these earliest):\n${weakLines.join("\n")}`
 			: "No clear weak topics were detected from performance history.",
@@ -166,42 +177,84 @@ export async function generatePlanContent(params: {
 }> {
 	const { topics, weakTopicIds } = await gatherLearnerContext(params);
 
+	// Ground the roadmap in what the course actually covers. The query is the
+	// learner's goal plus the topics they are weakest on, so retrieval surfaces
+	// the material the plan should steer them toward first.
+	//
+	// Which topics are weak still comes from gatherLearnerContext's mastery
+	// history — retrieval only decides what the steps say, never their order or
+	// priority.
+	let context = "";
+	try {
+		const weakTitles = topics
+			.filter((t) => weakTopicIds.has(t.id))
+			.slice(0, 8)
+			.map((t) => t.title);
+		const query = [params.goal, ...weakTitles].filter(Boolean).join(". ");
+		if (query.trim()) {
+			({ context } = await retrieveContext({
+				organizationId: params.organizationId,
+				courseId: params.courseId,
+				query,
+				topK: PLAN_TOP_K,
+				maxChars: PLAN_CONTEXT_CHARS,
+			}));
+		}
+	} catch (error) {
+		// A plan built from topic titles alone is still a usable plan; a failed
+		// retrieval must not stop the learner getting one.
+		logger.warn(
+			{ error, organizationId: params.organizationId },
+			"Retrieval failed for study plan; building from topics alone",
+		);
+	}
+
 	const { object } = await generateObject({
 		model: tutorModel(),
 		schema: studyPlanGenerationSchema,
 		system: TUTOR_SYSTEM_PROMPT,
-		prompt: buildPrompt({ goal: params.goal, topics, weakTopicIds }),
+		prompt: buildPrompt({ goal: params.goal, topics, weakTopicIds, context }),
 	});
 
 	return { generated: object, topics };
 }
 
 /**
- * Map AI-generated items to StudyPlanItem create rows, linking topicId when the
- * AI referenced a real topic by (case-insensitive) exact title.
+ * Map AI-generated items to StudyPlanItem create rows, linking each step to the
+ * topic it refers to.
+ *
+ * Matching is by meaning, not by characters — see lib/ai/topic-matching.ts. The
+ * previous exact-title lookup silently produced `topicId: null` on any
+ * paraphrase, leaving plan steps with nothing to open.
+ *
+ * Async because the fallback pass may embed; it does not for typical plans,
+ * where the lexical pass places everything.
  */
-export function buildItemRows(params: {
+export async function buildItemRows(params: {
 	organizationId: string;
 	studyPlanId: string;
 	generated: StudyPlanGeneration;
 	topics: TopicLite[];
-}): Prisma.StudyPlanItemCreateManyInput[] {
+}): Promise<Prisma.StudyPlanItemCreateManyInput[]> {
 	const { organizationId, studyPlanId, generated, topics } = params;
 
-	const byTitle = new Map<string, string>();
-	for (const t of topics) {
-		byTitle.set(t.title.trim().toLowerCase(), t.id);
-	}
+	// The model is asked to echo the topic in `topicTitle`; when it does, that is
+	// the cleanest signal. When it leaves it null, the step's own title still
+	// usually names the topic, so fall back to that rather than giving up.
+	const steps = generated.items.map(
+		(item) => item.topicTitle?.trim() || item.title,
+	);
 
-	return generated.items.map((item, index) => {
-		const key = (item.topicTitle ?? item.title).trim().toLowerCase();
-		const topicId = byTitle.get(key) ?? null;
-		return {
-			organizationId,
-			studyPlanId,
-			topicId,
-			title: item.title,
-			orderIndex: index,
-		};
+	const topicIds = await linkStepsToTopics({
+		steps,
+		topics: topics.map((t) => ({ id: t.id, title: t.title })),
 	});
+
+	return generated.items.map((item, index) => ({
+		organizationId,
+		studyPlanId,
+		topicId: topicIds[index] ?? null,
+		title: item.title,
+		orderIndex: index,
+	}));
 }

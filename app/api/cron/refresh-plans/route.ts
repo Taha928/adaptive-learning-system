@@ -61,7 +61,7 @@ export async function GET(req: Request): Promise<Response> {
 					},
 				});
 
-				const rows = buildItemRows({
+				const rows = await buildItemRows({
 					organizationId: plan.organizationId,
 					studyPlanId: plan.id,
 					generated,

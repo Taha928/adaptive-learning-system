@@ -28,6 +28,7 @@
 		"test:e2e:headed": "npm run with-dev-env -- playwright test --headed",
 		"test:e2e:setup": "npm run with-dev-env -- playwright install",
 		"with-dev-env": "dotenv -e ./.env --",
+		"backfill-materials": "esbuild scripts/backfill-materials.ts --bundle --platform=node --format=esm --packages=external --log-level=error --outfile=.cache/backfill-materials.mjs && npm run with-dev-env -- node --conditions=react-server .cache/backfill-materials.mjs",
 		"db:generate": "prisma generate",
 		"db:migrate": "prisma migrate deploy",
 		"db:migrate:dev": "prisma migrate dev",

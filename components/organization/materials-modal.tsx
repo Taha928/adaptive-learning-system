@@ -63,8 +63,11 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 			},
 		});
 
-		// Upload a PDF and pull its text into the form via the extraction endpoint.
-		const handlePdfUpload = async (file: File) => {
+		// Upload a PDF or DOCX and pull its text into the form via the extraction
+		// endpoint. The text is what the AI features index and search, so this is
+		// the same path for both formats.
+		const handleDocumentUpload = async (file: File) => {
+			const isDocx = /\.docx$/i.test(file.name);
 			setIsExtracting(true);
 			try {
 				const body = new FormData();
@@ -81,15 +84,23 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 				}
 				const data = (await res.json()) as { text: string; pageCount: number };
 				form.setValue("extractedText", data.text);
-				form.setValue("fileType", MaterialType.pdf);
+				form.setValue(
+					"fileType",
+					isDocx ? MaterialType.docx : MaterialType.pdf,
+				);
 				form.setValue("fileSizeBytes", file.size);
 				if (!form.getValues("title")) {
-					form.setValue("title", file.name.replace(/\.pdf$/i, ""));
+					form.setValue("title", file.name.replace(/\.(pdf|docx)$/i, ""));
 				}
-				toast.success(`Extracted text from ${data.pageCount} page(s)`);
+				// A DOCX has no page count, so say something true for it instead.
+				toast.success(
+					data.pageCount > 0
+						? `Extracted text from ${data.pageCount} page(s)`
+						: "Extracted text from document",
+				);
 			} catch (error) {
 				toast.error(
-					error instanceof Error ? error.message : "Could not read PDF",
+					error instanceof Error ? error.message : "Could not read document",
 				);
 			} finally {
 				setIsExtracting(false);
@@ -116,8 +127,8 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 					<SheetHeader>
 						<SheetTitle>Add Material</SheetTitle>
 						<SheetDescription>
-							Upload a PDF or paste notes. The text feeds the AI tutor for
-							quizzes and study plans.
+							Upload a PDF or Word document, or paste notes. The text feeds the
+							AI tutor for quizzes and study plans.
 						</SheetDescription>
 					</SheetHeader>
 
@@ -151,11 +162,11 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 									<input
 										ref={fileInputRef}
 										type="file"
-										accept="application/pdf"
+										accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
 										className="hidden"
 										onChange={(e) => {
 											const file = e.target.files?.[0];
-											if (file) handlePdfUpload(file);
+											if (file) handleDocumentUpload(file);
 											e.target.value = "";
 										}}
 									/>
@@ -171,7 +182,7 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 										) : (
 											<UploadIcon className="size-4" />
 										)}
-										{isExtracting ? "Extracting…" : "Upload PDF"}
+										{isExtracting ? "Extracting…" : "Upload PDF or Word"}
 									</Button>
 
 									<FormField
@@ -183,7 +194,7 @@ export const MaterialsModal = NiceModal.create<MaterialsModalProps>(
 													<FormLabel>Content</FormLabel>
 													<FormControl>
 														<Textarea
-															placeholder="Paste notes here, or upload a PDF above to fill this automatically…"
+															placeholder="Paste notes here, or upload a document above to fill this automatically…"
 															className="h-44 max-h-[38vh] resize-none overflow-y-auto font-mono text-xs"
 															{...field}
 															value={field.value ?? ""}

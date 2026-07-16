@@ -16,11 +16,12 @@ import {
 	buildMasteryReport,
 	type PoolQuestion,
 	recordTopicResult,
-	selectNextQuestion,
 	STARTING_ABILITY,
+	selectNextQuestion,
 	type TopicStat,
 } from "@/lib/ai/adaptive";
 import { gradeFreeResponse } from "@/lib/ai/quiz-grading";
+import { retrieveContext } from "@/lib/ai/retrieval";
 import {
 	type AnswerRecord,
 	perStageFor,
@@ -111,13 +112,28 @@ const BLOOM_LADDER: Record<Difficulty, string> = {
 	hard: `Bloom level: ANALYSE / EVALUATE / CREATE. Pose a realistic scenario and require the student to diagnose it, compare options and justify a choice, or design an approach. Roughly half of these should be design or evaluation questions ("Which mechanism should be implemented and why?", "Design a secure authentication strategy for an online banking system"), not just analysis.`,
 };
 
+/** Passages behind a single-topic quiz. */
+const QUIZ_TOP_K = 6;
+
+/**
+ * Passages per topic when building an adaptive pool. Deliberately small: this
+ * one is multiplied by the topic count, so a course-wide pool over eight topics
+ * at the single-topic budget would rebuild the wall of text retrieval replaced.
+ *
+ * The char budget must stay comfortably above one chunk (~3-5k chars). Set
+ * below that, every topic would come back with a single truncated passage —
+ * technically grounded, practically useless for writing eight questions.
+ */
+const POOL_TOP_K_PER_TOPIC = 3;
+const POOL_CONTEXT_CHARS_PER_TOPIC = 6_000;
+
 type TopicForGeneration = {
 	id: string;
 	courseId: string;
 	title: string;
 	summary: string | null;
 	content: string | null;
-	material: { extractedText: string | null } | null;
+	materialId: string | null;
 };
 
 /**
@@ -137,14 +153,22 @@ async function generateQuizForTopic(params: {
 	const { tx, organizationId, createdById, topic, numQuestions, difficulty } =
 		params;
 
-	const sourceParts = [
-		topic.summary,
-		topic.content,
-		topic.material?.extractedText,
-	].filter((part): part is string => Boolean(part?.trim()));
+	// Retrieve the passages about this topic instead of pasting the whole
+	// material in and truncating. Only the source text changes here — difficulty
+	// still comes from the caller and the Bloom ladder below is untouched.
+	const { context } = await retrieveContext({
+		organizationId,
+		courseId: topic.courseId,
+		materialIds: topic.materialId ? [topic.materialId] : null,
+		query: [topic.title, topic.summary].filter(Boolean).join(". "),
+		topK: QUIZ_TOP_K,
+	});
 
-	// Keep the prompt bounded so we never blow past model context limits.
-	const sourceText = sourceParts.join("\n\n").slice(0, 12000);
+	const sourceParts = [topic.summary, topic.content, context].filter(
+		(part): part is string => Boolean(part?.trim()),
+	);
+
+	const sourceText = sourceParts.join("\n\n");
 
 	// Longer quizzes get richer free-response questions; quick ones stay snappy.
 	const includeLong = numQuestions >= 10;
@@ -272,7 +296,9 @@ function tierSchemaFor(style: PoolStyle) {
 	});
 }
 
-type TierQuestion = z.infer<ReturnType<typeof tierSchemaFor>>["questions"][number];
+type TierQuestion = z.infer<
+	ReturnType<typeof tierSchemaFor>
+>["questions"][number];
 
 const STYLE_RULES: Record<PoolStyle, string> = {
 	mixed: `Question types:
@@ -439,12 +465,50 @@ async function generateAdaptivePool(params: {
 				? Math.min(12, Math.max(numQuestions, topics.length * 2))
 				: tierSizeFor(numQuestions, topics.length);
 
+	// Ground each topic in its own retrieved passages. Before this, the pool was
+	// built from topic titles and summaries alone — a sentence or two — so the
+	// model invented plausible-sounding questions rather than asking about what
+	// the course actually taught. Retrieval is per topic (not one query for the
+	// whole course) so a topic's questions come from that topic's material.
+	//
+	// Only the source text the model reads changes. Tier sizing, the Bloom
+	// ladder, question selection and mastery all sit outside this and are
+	// untouched.
+	const topicContexts = await Promise.all(
+		topics.map(async (t) => {
+			try {
+				const { context } = await retrieveContext({
+					organizationId,
+					courseId,
+					query: [t.title, t.summary].filter(Boolean).join(". "),
+					topK: POOL_TOP_K_PER_TOPIC,
+					maxChars: POOL_CONTEXT_CHARS_PER_TOPIC,
+				});
+				return context;
+			} catch (error) {
+				// One topic's retrieval failing must not sink the whole quiz; it
+				// falls back to title + summary, which is what it had before.
+				logger.warn(
+					{ error, topicId: t.id, organizationId },
+					"Retrieval failed for topic; generating from its summary alone",
+				);
+				return "";
+			}
+		}),
+	);
+
 	const topicBlocks = topics
-		.map(
-			(t, i) =>
-				`${i + 1}. ${t.title}${t.summary ? `\n   ${t.summary.slice(0, 400)}` : ""}`,
-		)
-		.join("\n");
+		.map((t, i) => {
+			const summary = t.summary ? `\n   ${t.summary.slice(0, 400)}` : "";
+			const context = topicContexts[i]
+				? `\n   Source material for this topic:\n${topicContexts[i]
+						?.split("\n")
+						.map((line) => `   ${line}`)
+						.join("\n")}`
+				: "";
+			return `${i + 1}. ${t.title}${summary}${context}`;
+		})
+		.join("\n\n");
 
 	// One call per tier, concurrently: small asks the model can actually satisfy,
 	// and a tier balance guaranteed by construction instead of requested in a
@@ -592,7 +656,9 @@ async function loadTopicForGeneration(
 			title: true,
 			summary: true,
 			content: true,
-			material: { select: { extractedText: true } },
+			// The material's text is no longer loaded: generation retrieves the
+			// passages it needs instead of carrying the whole document around.
+			materialId: true,
 		},
 	});
 
@@ -704,7 +770,8 @@ function rebuildAdaptiveState(
 	}
 
 	return {
-		ability: history.length === 0 ? STARTING_ABILITY : abilityFromHistory(history),
+		ability:
+			history.length === 0 ? STARTING_ABILITY : abilityFromHistory(history),
 		topicStats,
 		askedIds,
 		history,
@@ -924,7 +991,9 @@ async function finalizeAdaptiveAttempt(params: {
 			questionId: a.questionId,
 			prompt: q?.prompt ?? "",
 			options: Array.isArray(q?.options)
-				? (q.options as unknown[]).filter((o): o is string => typeof o === "string")
+				? (q.options as unknown[]).filter(
+						(o): o is string => typeof o === "string",
+					)
 				: [],
 			yourAnswer:
 				a.selectedOption ??
@@ -1284,7 +1353,10 @@ export const organizationQuizRouter = createTRPCRouter({
 			});
 
 			if (result.count === 0) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Attempt not found" });
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Attempt not found",
+				});
 			}
 
 			return { success: true };
@@ -1499,7 +1571,10 @@ export const organizationQuizRouter = createTRPCRouter({
 			});
 
 			if (!attempt) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Attempt not found" });
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Attempt not found",
+				});
 			}
 			if (!attempt.quiz.isAdaptive) {
 				throw new TRPCError({
@@ -1584,7 +1659,9 @@ export const organizationQuizRouter = createTRPCRouter({
 			);
 
 			const topicIds = [
-				...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t)),
+				...new Set(
+					questions.map((q) => q.topicId).filter((t): t is string => !!t),
+				),
 			];
 			const priorMastery = await loadPriorMastery(
 				ctx.organization.id,
@@ -2159,7 +2236,8 @@ export const organizationQuizRouter = createTRPCRouter({
 			// another quiz forever.
 			const MASTERY_SCORE = 80;
 			const mastered =
-				attempt.quiz.difficulty === "hard" && graded.percentage >= MASTERY_SCORE;
+				attempt.quiz.difficulty === "hard" &&
+				graded.percentage >= MASTERY_SCORE;
 
 			// Generate the NEXT adaptive quiz at the new difficulty (best-effort).
 			// Done outside the grading transaction so an AI failure never rolls

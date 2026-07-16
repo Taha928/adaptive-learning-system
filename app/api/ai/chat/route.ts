@@ -6,6 +6,7 @@ import {
 	chatModels,
 	DEFAULT_CHAT_MODEL,
 } from "@/config/billing.config";
+import { retrieveContext } from "@/lib/ai/retrieval";
 // Single source of truth for the tutor persona + model so the chat surface
 // never drifts from the quiz/study-plan generation surfaces.
 import { TUTOR_SYSTEM_PROMPT, tutorModel } from "@/lib/ai/tutor";
@@ -307,6 +308,49 @@ export async function POST(req: Request) {
 			}
 		} catch (error) {
 			logger.warn({ error, organizationId }, "Failed to build tutor context");
+		}
+
+		// Ground the answer in the student's own uploaded material. Retrieval
+		// runs against the latest question only: earlier turns describe a
+		// different need, and folding them in drags the search off-topic.
+		try {
+			const question =
+				messages.findLast((m) => m.role === "user")?.content ?? "";
+			if (question.trim()) {
+				const { context, chunks } = await retrieveContext({
+					organizationId,
+					query: question,
+				});
+
+				systemPrompt += context
+					? [
+							"",
+							"",
+							"Below are the passages from the student's own uploaded course material that best match their question. They are the authoritative source: prefer them over your own knowledge, and follow their terminology and notation.",
+							"",
+							context,
+							"",
+							"If those passages do not contain the answer, say so plainly in one short sentence (for example: \"Your uploaded material doesn't cover this, so here's the general answer:\") and only then answer from general knowledge. Never present general knowledge as though it came from their material, and never claim the material says something it does not.",
+						].join("\n")
+					: [
+							"",
+							"",
+							"The student's uploaded course material contains nothing relevant to this question. Open your reply by saying so in one short sentence, then answer from general knowledge.",
+						].join("\n");
+
+				logger.debug(
+					{ organizationId, matched: chunks.length },
+					"Tutor retrieval complete",
+				);
+			}
+		} catch (error) {
+			// Retrieval is an enhancement; a failure must not take down the chat.
+			// The tutor falls back to answering unaided, which is what it did
+			// before retrieval existed.
+			logger.warn(
+				{ error, organizationId },
+				"Material retrieval failed; answering without it",
+			);
 		}
 	}
 

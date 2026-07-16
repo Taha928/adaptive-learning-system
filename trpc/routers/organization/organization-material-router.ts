@@ -2,6 +2,8 @@ import { MaterialStatus, type Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { generateObject } from "ai";
 import { z } from "zod/v4";
+import { indexMaterialChunksSafely } from "@/lib/ai/material-indexing";
+import { selectCoverageChunks } from "@/lib/ai/retrieval";
 import { TUTOR_SYSTEM_PROMPT, tutorModel } from "@/lib/ai/tutor";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -110,7 +112,7 @@ export const organizationMaterialRouter = createTRPCRouter({
 
 			const { extractedText, ...rest } = input;
 
-			return prisma.material.create({
+			const material = await prisma.material.create({
 				data: {
 					...rest,
 					extractedText: extractedText || null,
@@ -122,6 +124,21 @@ export const organizationMaterialRouter = createTRPCRouter({
 					uploadedById: ctx.user.id,
 				},
 			});
+
+			// Build the RAG index from the text we just stored. Awaited rather
+			// than fire-and-forget because this also runs on serverless, where
+			// work outstanding when the response is sent is simply killed.
+			// Never throws — see indexMaterialChunksSafely.
+			if (extractedText) {
+				await indexMaterialChunksSafely({
+					materialId: material.id,
+					organizationId: ctx.organization.id,
+					text: extractedText,
+				});
+			}
+
+			// Unchanged shape: still the Material, exactly as before.
+			return material;
 		}),
 
 	update: protectedOrganizationProcedure
@@ -130,28 +147,53 @@ export const organizationMaterialRouter = createTRPCRouter({
 			assertCanManage(ctx.membership.role);
 			const { id, ...data } = input;
 
-			return prisma.$transaction(async (tx) => {
-				const result = await tx.material.updateMany({
-					where: { id, organizationId: ctx.organization.id },
-					data,
+			const { updated, previousText } = await prisma.$transaction(
+				async (tx) => {
+					const existing = await tx.material.findFirst({
+						where: { id, organizationId: ctx.organization.id },
+						select: { extractedText: true },
+					});
+
+					const result = await tx.material.updateMany({
+						where: { id, organizationId: ctx.organization.id },
+						data,
+					});
+
+					if (result.count === 0) {
+						throw new TRPCError({
+							code: "NOT_FOUND",
+							message: "Material not found",
+						});
+					}
+
+					const updated = await tx.material.findUnique({ where: { id } });
+					if (!updated) {
+						throw new TRPCError({
+							code: "INTERNAL_SERVER_ERROR",
+							message: "Failed to load updated material",
+						});
+					}
+					return { updated, previousText: existing?.extractedText ?? null };
+				},
+			);
+
+			// Re-index only when the text actually changed. Embeddings are paid
+			// for per token, so re-embedding an unchanged document because the
+			// title was edited is pure waste — "generate embeddings once" means
+			// once per version of the text, not once per save.
+			if (
+				data.extractedText !== undefined &&
+				updated.extractedText !== previousText
+			) {
+				await indexMaterialChunksSafely({
+					materialId: updated.id,
+					organizationId: ctx.organization.id,
+					text: updated.extractedText,
 				});
+			}
 
-				if (result.count === 0) {
-					throw new TRPCError({
-						code: "NOT_FOUND",
-						message: "Material not found",
-					});
-				}
-
-				const updated = await tx.material.findUnique({ where: { id } });
-				if (!updated) {
-					throw new TRPCError({
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Failed to load updated material",
-					});
-				}
-				return updated;
-			});
+			// Unchanged shape: still the Material, exactly as before.
+			return updated;
 		}),
 
 	delete: protectedOrganizationProcedure
@@ -205,8 +247,19 @@ export const organizationMaterialRouter = createTRPCRouter({
 				});
 			}
 
-			// Bound the source so we never exceed model context limits.
-			const sourceText = material.extractedText.slice(0, 16000);
+			// Segmentation has no query to retrieve against — the whole document is
+			// the subject — so it reads an even spread of chunks across the entire
+			// material instead. The previous `.slice(0, 16000)` meant a long
+			// document's later half was never segmented and its topics silently did
+			// not exist.
+			const coverage = await selectCoverageChunks({
+				organizationId: ctx.organization.id,
+				materialId: material.id,
+			});
+			// Falls back to the old bounded slice only if this material has no
+			// chunks and could not be indexed (e.g. the embedding call failed).
+			const sourceText =
+				coverage.text || material.extractedText.slice(0, 16000);
 
 			try {
 				const { object } = await generateObject({

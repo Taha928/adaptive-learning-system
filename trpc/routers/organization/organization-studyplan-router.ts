@@ -122,7 +122,7 @@ export const organizationStudyPlanRouter = createTRPCRouter({
 					},
 				});
 
-				const rows = buildItemRows({
+				const rows = await buildItemRows({
 					organizationId: ctx.organization.id,
 					studyPlanId: created.id,
 					generated,

@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    # pgvector's image is stock Postgres 17 with the `vector` extension already
+    # compiled in, so `CREATE EXTENSION vector` works. Plain postgres:17 cannot
+    # run the extension at all — the .so isn't in the image.
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: database
       POSTGRES_PASSWORD: password
