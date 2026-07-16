@@ -714,6 +714,7 @@ model Topic {
     course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
     material        Material?        @relation(fields: [materialId], references: [id], onDelete: SetNull)
     quizzes         Quiz[]
+    questions       Question[]
     performanceLogs PerformanceLog[]
     studyPlanItems  StudyPlanItem[]
 
@@ -732,6 +733,14 @@ model Quiz {
     title            String
     description      String?
     difficulty       QuizDifficulty @default(medium)
+    // An adaptive assessment serves one question at a time, choosing each from a
+    // mixed-difficulty pool based on live performance. `difficulty` above is then
+    // only a nominal summary — the real level varies per Question.
+    isAdaptive       Boolean        @default(false) @map("is_adaptive")
+    // How many of the pooled questions an adaptive attempt actually serves. The
+    // pool is deliberately larger so the engine has room to choose; without this
+    // there is no way to tell "quiz length" from "pool size".
+    adaptiveLength   Int?           @map("adaptive_length")
     passingScore     Int            @default(60) @map("passing_score")
     timeLimitMinutes Int?           @map("time_limit_minutes")
     isAiGenerated    Boolean        @default(false) @map("is_ai_generated")
@@ -754,26 +763,34 @@ model Quiz {
 }
 
 model Question {
-    id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-    organizationId String       @map("organization_id") @db.Uuid
-    quizId         String       @map("quiz_id") @db.Uuid
+    id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+    organizationId String          @map("organization_id") @db.Uuid
+    quizId         String          @map("quiz_id") @db.Uuid
+    // Set on adaptive quizzes, where the pool spans several levels and topics.
+    // Null on legacy rows and on fixed-difficulty quizzes, which inherit both
+    // from the parent Quiz. Never shown to the student — the selection engine
+    // reads it, the UI does not.
+    difficulty     QuizDifficulty?
+    topicId        String?         @map("topic_id") @db.Uuid
     prompt         String
-    type           QuestionType @default(multipleChoice)
-    options        Json?        @db.JsonB
-    correctAnswer  String       @map("correct_answer")
+    type           QuestionType    @default(multipleChoice)
+    options        Json?           @db.JsonB
+    correctAnswer  String          @map("correct_answer")
     explanation    String?
-    points         Int          @default(1)
-    orderIndex     Int          @default(0) @map("order_index")
-    createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-    updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+    points         Int             @default(1)
+    orderIndex     Int             @default(0) @map("order_index")
+    createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+    updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
     organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     quiz         Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+    topic        Topic?       @relation(fields: [topicId], references: [id], onDelete: SetNull)
     answers      Answer[]
 
     @@index([organizationId])
     @@index([quizId])
     @@index([quizId, orderIndex])
+    @@index([topicId])
     @@map("question")
 }
 

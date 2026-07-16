@@ -15,10 +15,37 @@ export const quizIdSchema = z.object({
 
 // Generate an AI quiz from a topic (instructor only).
 // Length presets map to: Quick (5), Standard (10), Practice (20).
+// `difficulty` applies to Fixed Difficulty mode only — every question is
+// generated at that one level. Adaptive assessments ignore it entirely and go
+// through generateAdaptive below.
 export const generateFromTopicSchema = z.object({
 	topicId: z.string().uuid(),
 	numQuestions: z.number().int().min(1).max(20).default(5),
 	difficulty: z.nativeEnum(QuizDifficulty).optional(),
+});
+
+// Generate an adaptive assessment. `topicId: null` scopes the pool to every
+// topic in the course, which is what lets the engine adapt topic selection as
+// well as difficulty; pinning a topic narrows it to that topic alone.
+export const generateAdaptiveSchema = z.object({
+	courseId: z.string().uuid(),
+	topicId: z.string().uuid().nullable().default(null),
+	numQuestions: z.number().int().min(5).max(20).default(10),
+});
+
+// Answer one question of an in-progress adaptive assessment. The engine grades
+// it, then returns the next question it selects — there is no client-side
+// difficulty choice, by design.
+export const answerAdaptiveSchema = z.object({
+	attemptId: z.string().uuid(),
+	questionId: z.string().uuid(),
+	selectedOption: z.string().max(2000).optional(),
+	responseText: z.string().max(5000).optional(),
+	responseImage: z
+		.string()
+		.startsWith("data:image/")
+		.max(12_000_000)
+		.optional(),
 });
 
 // Start an attempt at a quiz.
@@ -60,6 +87,8 @@ export const submitAttemptSchema = z.object({
 export type ListQuizzesInput = z.infer<typeof listQuizzesSchema>;
 export type QuizIdInput = z.infer<typeof quizIdSchema>;
 export type GenerateFromTopicInput = z.infer<typeof generateFromTopicSchema>;
+export type GenerateAdaptiveInput = z.infer<typeof generateAdaptiveSchema>;
+export type AnswerAdaptiveInput = z.infer<typeof answerAdaptiveSchema>;
 export type StartAttemptInput = z.infer<typeof startAttemptSchema>;
 export type SubmitAnswerInput = z.infer<typeof submitAnswerSchema>;
 export type SubmitAttemptInput = z.infer<typeof submitAttemptSchema>;

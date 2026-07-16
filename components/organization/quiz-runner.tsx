@@ -3,16 +3,19 @@
 import {
 	ArrowRightIcon,
 	CheckCircle2Icon,
-	ImageIcon,
 	LightbulbIcon,
 	SparklesIcon,
 	TrophyIcon,
 	XCircleIcon,
-	XIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AdaptiveQuizRunner } from "@/components/organization/adaptive-quiz-runner";
+import {
+	QuizQuestionCard,
+	readAnswerImage,
+} from "@/components/organization/quiz-question-card";
 import {
 	type QuizReviewItem,
 	QuizReviewItems,
@@ -28,31 +31,22 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { CenteredSpinner } from "@/components/ui/custom/centered-spinner";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/trpc/client";
+import type { RouterOutputs } from "@/trpc/routers/app";
 
 type Difficulty = "easy" | "medium" | "hard";
 
-const MAX_ANSWER_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
-
-function fileToDataUrl(file: File): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(reader.result as string);
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(file);
-	});
-}
-
-const DIFFICULTY_STYLES: Record<Difficulty, string> = {
-	easy: "bg-emerald-500 text-white border-transparent",
-	medium: "bg-amber-500 text-white border-transparent",
-	hard: "bg-rose-500 text-white border-transparent",
+/**
+ * How the between-quiz ladder describes its next step. Phrased as a direction
+ * of travel rather than a level, so the student is told what is coming without
+ * being handed a label to wear.
+ */
+const NEXT_STEP_COPY: Record<Difficulty, string> = {
+	easy: "Your next quiz eases off to rebuild the fundamentals.",
+	medium: "Your next quiz moves on to applying what you know.",
+	hard: "Your next quiz steps up to scenarios and analysis.",
 };
 
 type SubmitResult = {
@@ -74,17 +68,46 @@ type SubmitResult = {
 	};
 };
 
-function toOptions(options: unknown): string[] {
-	if (Array.isArray(options)) {
-		return options.filter((o): o is string => typeof o === "string");
-	}
-	return [];
-}
+type LoadedQuiz = RouterOutputs["organization"]["quiz"]["getForAttempt"];
 
+/**
+ * Entry point for taking any quiz. An adaptive assessment has a fundamentally
+ * different loop — one question at a time, each selected server-side once the
+ * previous is graded — so it gets its own runner rather than a pile of
+ * conditionals threaded through this one.
+ */
 export function QuizRunner({ quizId }: { quizId: string }) {
 	const { data: quiz, isPending } =
 		trpc.organization.quiz.getForAttempt.useQuery({ quizId });
 
+	if (isPending) return <CenteredSpinner />;
+	if (!quiz) return <p className="text-muted-foreground">Quiz not found.</p>;
+
+	if (quiz.isAdaptive) {
+		return (
+			<AdaptiveQuizRunner
+				quizId={quizId}
+				title={quiz.title}
+				totalQuestions={quiz.totalQuestions}
+			/>
+		);
+	}
+
+	return <FixedQuizRunner quizId={quizId} quiz={quiz} />;
+}
+
+/**
+ * A fixed-difficulty quiz: the whole paper at once, submitted in one go. The
+ * student chose the level when they generated it, so it is never shown back to
+ * them on the questions.
+ */
+function FixedQuizRunner({
+	quizId,
+	quiz,
+}: {
+	quizId: string;
+	quiz: LoadedQuiz;
+}) {
 	const [attemptId, setAttemptId] = useState<string | null>(null);
 	const [responses, setResponses] = useState<Record<string, string>>({});
 	const [responseImages, setResponseImages] = useState<
@@ -93,19 +116,12 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 	const [result, setResult] = useState<SubmitResult | null>(null);
 
 	const handleImageSelected = async (questionId: string, file: File | null) => {
-		if (!file) return;
-		if (file.size > MAX_ANSWER_IMAGE_BYTES) {
-			toast.error("Image is too large (max 8 MB).");
-			return;
-		}
-		try {
-			const url = await fileToDataUrl(file);
+		const url = await readAnswerImage(file);
+		if (url && file) {
 			setResponseImages((prev) => ({
 				...prev,
 				[questionId]: { name: file.name, url },
 			}));
-		} catch {
-			toast.error("Could not read the image.");
 		}
 	};
 
@@ -123,33 +139,17 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 	});
 
 	const submitMutation = trpc.organization.quiz.submitAttempt.useMutation({
-		onSuccess: (data) => {
-			setResult({
-				score: data.score,
-				percentage: data.percentage,
-				passed: data.passed,
-				mastery: data.mastery,
-				difficulty: data.difficulty as Difficulty,
-				difficultyChanged: data.difficultyChanged,
-				nextQuizId: data.nextQuizId,
-				results: data.results,
-				mastered: data.mastered,
-				report: data.report,
-			});
-		},
+		onSuccess: (data) => setResult(data as SubmitResult),
 		onError: (error) => toast.error(error.message || "Could not submit quiz"),
 	});
 
-	const questions = quiz?.questions ?? [];
+	const questions = quiz.questions;
 	const answeredCount = useMemo(
 		() =>
 			questions.filter((q) => responses[q.id]?.trim() || responseImages[q.id])
 				.length,
 		[questions, responses, responseImages],
 	);
-
-	if (isPending) return <CenteredSpinner />;
-	if (!quiz) return <p className="text-muted-foreground">Quiz not found.</p>;
 
 	const started = attemptId != null;
 
@@ -185,9 +185,8 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 										{result.percentage}%
 									</CardTitle>
 									<CardDescription>
-										{result.score} /{" "}
-										{quiz.questions.reduce((s, q) => s + q.points, 0)} points ·{" "}
-										{result.passed ? "Passed" : "Keep practicing"}
+										{result.score} / {questions.reduce((s, q) => s + q.points, 0)}{" "}
+										points · {result.passed ? "Passed" : "Keep practicing"}
 									</CardDescription>
 								</div>
 							</div>
@@ -224,7 +223,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 								</div>
 							</div>
 							<CardDescription>
-								You've cleared {result.report.topicTitle} at hard difficulty.
+								You've cleared {result.report.topicTitle} at every level.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-5">
@@ -281,35 +280,24 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 						</CardContent>
 					</Card>
 				) : (
-					/* The adaptive money-shot: next quiz difficulty badge. */
 					<Card className="border-primary/40 bg-primary/5">
 						<CardContent className="space-y-4 py-5">
 							<div className="flex flex-wrap items-center justify-between gap-4">
 								<div className="space-y-1">
 									<div className="flex items-center gap-2">
 										<SparklesIcon className="size-4 text-primary" />
-										<span className="font-medium text-sm">
-											Adaptive difficulty
-										</span>
+										<span className="font-medium text-sm">What's next</span>
 										{result.difficultyChanged && (
 											<Badge variant="outline" className="text-xs">
-												Updated
+												Adjusted
 											</Badge>
 										)}
 									</div>
 									<p className="text-muted-foreground text-sm">
 										Mastery {Math.round(result.mastery * 100)}% · confidence{" "}
-										{result.report.confidence.toLowerCase()} · your next quiz is
-										set to
+										{result.report.confidence.toLowerCase()}
 									</p>
-									<Badge
-										className={cn(
-											"px-3 py-1 text-sm uppercase tracking-wide",
-											DIFFICULTY_STYLES[result.difficulty],
-										)}
-									>
-										{result.difficulty}
-									</Badge>
+									<p className="text-sm">{NEXT_STEP_COPY[result.difficulty]}</p>
 								</div>
 								{result.nextQuizId ? (
 									<Button asChild>
@@ -364,22 +352,10 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 		<div className="space-y-6">
 			<Card>
 				<CardHeader>
-					<div className="flex items-center justify-between gap-3">
-						<div>
-							<CardTitle>{quiz.title}</CardTitle>
-							{quiz.description && (
-								<CardDescription>{quiz.description}</CardDescription>
-							)}
-						</div>
-						<Badge
-							className={cn(
-								"uppercase",
-								DIFFICULTY_STYLES[quiz.difficulty as Difficulty],
-							)}
-						>
-							{quiz.difficulty}
-						</Badge>
-					</div>
+					<CardTitle>{quiz.title}</CardTitle>
+					{quiz.description && (
+						<CardDescription>{quiz.description}</CardDescription>
+					)}
 				</CardHeader>
 			</Card>
 
@@ -387,8 +363,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
 					<p className="text-muted-foreground text-sm">
 						{questions.length} question{questions.length === 1 ? "" : "s"}.
-						Answer them all, then submit to see your score and your next
-						adaptive quiz.
+						Answer them all, then submit to see your score and your next quiz.
 					</p>
 					<Button
 						onClick={() => startMutation.mutate({ quizId })}
@@ -400,114 +375,21 @@ export function QuizRunner({ quizId }: { quizId: string }) {
 				</div>
 			) : (
 				<>
-					{questions.map((q, index) => {
-						const options = toOptions(q.options);
-						const isFreeResponse =
-							q.type === "shortAnswer" ||
-							q.type === "longAnswer" ||
-							options.length === 0;
-						return (
-							<Card key={q.id}>
-								<CardHeader>
-									<CardTitle className="text-base">
-										{index + 1}. {q.prompt}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									{isFreeResponse ? (
-										<div className="space-y-3">
-											{q.type === "longAnswer" ? (
-												<Textarea
-													placeholder="Write your answer…"
-													className="min-h-32"
-													value={responses[q.id] ?? ""}
-													onChange={(e) =>
-														setResponses((prev) => ({
-															...prev,
-															[q.id]: e.target.value,
-														}))
-													}
-												/>
-											) : (
-												<Input
-													placeholder="Type your answer…"
-													value={responses[q.id] ?? ""}
-													onChange={(e) =>
-														setResponses((prev) => ({
-															...prev,
-															[q.id]: e.target.value,
-														}))
-													}
-												/>
-											)}
-
-											{/* Image answer (e.g. handwritten maths working). */}
-											{responseImages[q.id] ? (
-												<div className="flex items-center gap-3 rounded-md border p-2">
-													{/* biome-ignore lint/performance/noImgElement: local data URL preview */}
-													<img
-														src={responseImages[q.id]!.url}
-														alt="Your answer"
-														className="size-16 rounded object-cover"
-													/>
-													<span className="min-w-0 flex-1 truncate text-muted-foreground text-sm">
-														{responseImages[q.id]!.name}
-													</span>
-													<Button
-														type="button"
-														size="icon-sm"
-														variant="ghost"
-														onClick={() => removeImage(q.id)}
-														aria-label="Remove image"
-													>
-														<XIcon className="size-4" />
-													</Button>
-												</div>
-											) : (
-												<label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-muted-foreground text-sm transition-colors hover:bg-accent">
-													<ImageIcon className="size-4" />
-													Attach an image of your answer
-													<input
-														type="file"
-														accept="image/*"
-														className="hidden"
-														onChange={(e) => {
-															void handleImageSelected(
-																q.id,
-																e.target.files?.[0] ?? null,
-															);
-															e.target.value = "";
-														}}
-													/>
-												</label>
-											)}
-										</div>
-									) : (
-										<RadioGroup
-											value={responses[q.id] ?? ""}
-											onValueChange={(value) =>
-												setResponses((prev) => ({ ...prev, [q.id]: value }))
-											}
-										>
-											{options.map((option, optIndex) => {
-												const id = `${q.id}-${optIndex}`;
-												return (
-													<label
-														key={id}
-														htmlFor={id}
-														className="flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm transition-colors hover:bg-accent"
-													>
-														<RadioGroupItem value={option} id={id} />
-														<span>{option}</span>
-													</label>
-												);
-											})}
-										</RadioGroup>
-									)}
-								</CardContent>
-							</Card>
-						);
-					})}
+					{questions.map((q, index) => (
+						<QuizQuestionCard
+							key={q.id}
+							question={{ ...q, topicTitle: q.topic?.title ?? null }}
+							index={index + 1}
+							total={questions.length}
+							value={responses[q.id] ?? ""}
+							image={responseImages[q.id] ?? null}
+							onValueChange={(value) =>
+								setResponses((prev) => ({ ...prev, [q.id]: value }))
+							}
+							onImageSelected={(f) => void handleImageSelected(q.id, f)}
+							onImageRemoved={() => removeImage(q.id)}
+						/>
+					))}
 
 					<Separator />
 
