@@ -5,11 +5,13 @@ import {
 	BookOpenIcon,
 	CheckCircle2Icon,
 	SparklesIcon,
+	Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useSession } from "@/hooks/use-session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +61,7 @@ const ALL_TOPICS = "__all__";
 export function CourseQaPanel() {
 	const router = useRouter();
 	const utils = trpc.useUtils();
+	const { user } = useSession();
 	const [courseId, setCourseId] = useState<string>("");
 	const [topicId, setTopicId] = useState<string>(ALL_TOPICS);
 	const [numQuestions, setNumQuestions] = useState<number>(9);
@@ -96,6 +99,14 @@ export function CourseQaPanel() {
 		},
 		onError: (error) =>
 			toast.error(error.message || "Could not build revision set"),
+	});
+
+	const deleteMutation = trpc.organization.quiz.delete.useMutation({
+		onSuccess: () => {
+			toast.success("Session deleted");
+			utils.organization.quiz.list.invalidate();
+		},
+		onError: (error) => toast.error(error.message || "Could not delete"),
 	});
 
 	if (isPending) return <CenteredSpinner />;
@@ -257,7 +268,7 @@ export function CourseQaPanel() {
 							}
 						>
 							<SparklesIcon className="size-4" />
-							Start revising
+							Start Questions &amp; Answers
 						</Button>
 					</div>
 
@@ -271,10 +282,14 @@ export function CourseQaPanel() {
 
 			{courseId && revisionSets.length > 0 && (
 				<div className="space-y-3">
-					<h3 className="font-medium">Your revision sets</h3>
+					<h3 className="font-medium">Your sessions</h3>
 					<ul className="space-y-2">
 						{revisionSets.map((q) => {
 							const best = q.attempts[0];
+							// Only your own sessions are yours to remove. The server
+							// enforces this too — this just avoids offering a button that
+							// would fail.
+							const isMine = q.createdById === user?.id;
 							return (
 								<li
 									key={q.id}
@@ -304,10 +319,32 @@ export function CourseQaPanel() {
 											<Link
 												href={`/dashboard/organization/quizzes/${q.id}/take`}
 											>
-												{best ? "Revise again" : "Start"}
+												{best ? "Revise again" : "Start Questions & Answers"}
 												<ArrowRightIcon className="size-3.5" />
 											</Link>
 										</Button>
+										{isMine && (
+											<Button
+												size="icon-sm"
+												variant="ghost"
+												aria-label={`Delete ${q.title}`}
+												loading={
+													deleteMutation.isPending &&
+													deleteMutation.variables?.quizId === q.id
+												}
+												onClick={() => {
+													if (
+														window.confirm(
+															`Delete “${q.title}”? Your answers and score for this session go with it.`,
+														)
+													) {
+														deleteMutation.mutate({ quizId: q.id });
+													}
+												}}
+											>
+												<Trash2Icon className="size-3.5 text-muted-foreground" />
+											</Button>
+										)}
 									</div>
 								</li>
 							);

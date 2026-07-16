@@ -22,6 +22,13 @@ import {
 } from "@/lib/ai/adaptive";
 import { gradeFreeResponse } from "@/lib/ai/quiz-grading";
 import {
+	type AnswerRecord,
+	perStageFor,
+	REVISION_STAGES,
+	revisionProgress,
+	stageTransition,
+} from "@/lib/ai/revision";
+import {
 	type Difficulty,
 	nextDifficulty,
 	TUTOR_SYSTEM_PROMPT,
@@ -419,11 +426,18 @@ async function generateAdaptivePool(params: {
 	} = params;
 
 	// A single-tier pool has no other level to fall back on, so it must carry the
-	// whole assessment itself rather than a third of it.
+	// whole session itself rather than a third of it.
+	//
+	// Revision needs a deeper tier than an assessment even when it spans all
+	// three: a wrong answer is followed by ANOTHER question on the same topic at
+	// the same level, and a tier holding roughly one question per topic has none
+	// to offer. Two per topic makes the retry real rather than aspirational.
 	const perLevel =
 		wantedTiers.length === 1
 			? Math.min(12, Math.max(numQuestions + 3, 6))
-			: tierSizeFor(numQuestions, topics.length);
+			: purpose === QuizPurpose.revision
+				? Math.min(12, Math.max(numQuestions, topics.length * 2))
+				: tierSizeFor(numQuestions, topics.length);
 
 	const topicBlocks = topics
 		.map(
@@ -666,12 +680,17 @@ async function loadPriorMastery(
 function rebuildAdaptiveState(
 	questions: AdaptiveQuestion[],
 	answers: { questionId: string; isCorrect: boolean | null }[],
-): { ability: number; topicStats: Map<string, TopicStat>; askedIds: Set<string> } {
+): {
+	ability: number;
+	topicStats: Map<string, TopicStat>;
+	askedIds: Set<string>;
+	history: AnswerRecord[];
+} {
 	const byId = new Map(questions.map((q) => [q.id, q]));
 	const askedIds = new Set(answers.map((a) => a.questionId));
 
 	let topicStats = new Map<string, TopicStat>();
-	const history: { level: Difficulty; isCorrect: boolean }[] = [];
+	const history: AnswerRecord[] = [];
 
 	for (const answer of answers) {
 		const question = byId.get(answer.questionId);
@@ -688,16 +707,25 @@ function rebuildAdaptiveState(
 		ability: history.length === 0 ? STARTING_ABILITY : abilityFromHistory(history),
 		topicStats,
 		askedIds,
+		history,
 	};
 }
 
 /** Grade a single answer. MCQ/true-false by exact match, free response by AI. */
+type OneAnswerGrade = {
+	isCorrect: boolean;
+	aiFeedback: string | null;
+	/** Remediation for a wrong answer; null when correct or unavailable. */
+	keyConcept: string | null;
+	revisionTip: string | null;
+};
+
 async function gradeOneAnswer(params: {
 	question: AdaptiveQuestion;
 	selectedOption: string | null;
 	responseText: string | null;
 	responseImage: string | null;
-}): Promise<{ isCorrect: boolean; aiFeedback: string | null }> {
+}): Promise<OneAnswerGrade> {
 	const { question, selectedOption, responseText, responseImage } = params;
 
 	const isFreeResponse =
@@ -711,6 +739,8 @@ async function gradeOneAnswer(params: {
 				selectedOption.trim().toLowerCase() ===
 					question.correctAnswer.trim().toLowerCase(),
 			aiFeedback: null,
+			keyConcept: null,
+			revisionTip: null,
 		};
 	}
 
@@ -722,7 +752,14 @@ async function gradeOneAnswer(params: {
 			responseImage,
 			isLong: question.type === QuestionType.longAnswer,
 		});
-		return { isCorrect: grade.isCorrect, aiFeedback: grade.feedback };
+		return {
+			isCorrect: grade.isCorrect,
+			aiFeedback: grade.feedback,
+			// Belt and braces: the prompt says null when correct, but a stray tip on
+			// a right answer would read as "you got it wrong".
+			keyConcept: grade.isCorrect ? null : grade.keyConcept,
+			revisionTip: grade.isCorrect ? null : grade.revisionTip,
+		};
 	} catch (error) {
 		logger.error(
 			{ error, questionId: question.id },
@@ -734,6 +771,8 @@ async function gradeOneAnswer(params: {
 					responseText.trim().toLowerCase() ===
 					question.correctAnswer.trim().toLowerCase(),
 				aiFeedback: null,
+				keyConcept: null,
+				revisionTip: null,
 			};
 		}
 		// An image-only answer cannot be string-matched. Don't penalise the
@@ -743,6 +782,8 @@ async function gradeOneAnswer(params: {
 			aiFeedback: responseImage
 				? "Automatic grading was temporarily unavailable, so this answer was marked as complete — compare it with the model answer to check yourself."
 				: null,
+			keyConcept: null,
+			revisionTip: null,
 		};
 	}
 }
@@ -1193,14 +1234,37 @@ export const organizationQuizRouter = createTRPCRouter({
 	delete: protectedOrganizationProcedure
 		.input(quizIdSchema)
 		.mutation(async ({ ctx, input }) => {
-			assertCanManage(ctx.membership.role);
-			const result = await prisma.quiz.deleteMany({
+			const quiz = await prisma.quiz.findFirst({
 				where: { id: input.quizId, organizationId: ctx.organization.id },
+				select: { id: true, createdById: true, purpose: true },
 			});
 
-			if (result.count === 0) {
+			if (!quiz) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
 			}
+
+			// A student generates their own revision sessions, so they must be able
+			// to remove them — but only their own. Instructors keep authority over
+			// course content. Deliberately NOT "revision sets are unprotected":
+			// ownership is the check, purpose only decides who else may pass.
+			const isOwner = quiz.createdById === ctx.user.id;
+			const canManage =
+				ctx.membership.role === "owner" || ctx.membership.role === "admin";
+
+			if (!isOwner && !canManage) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						quiz.purpose === QuizPurpose.revision
+							? "You can only delete revision sessions you created"
+							: "Only instructors can delete quizzes",
+				});
+			}
+
+			// Question, QuizAttempt and Answer all cascade from Quiz, so this also
+			// removes other students' attempts at an instructor's quiz — which is
+			// why a non-owner must be an instructor to get here.
+			await prisma.quiz.delete({ where: { id: quiz.id } });
 
 			return { success: true };
 		}),
@@ -1481,12 +1545,13 @@ export const organizationQuizRouter = createTRPCRouter({
 			const responseText = input.responseText ?? null;
 			const responseImage = input.responseImage ?? null;
 
-			const { isCorrect, aiFeedback } = await gradeOneAnswer({
-				question,
-				selectedOption,
-				responseText,
-				responseImage,
-			});
+			const { isCorrect, aiFeedback, keyConcept, revisionTip } =
+				await gradeOneAnswer({
+					question,
+					selectedOption,
+					responseText,
+					responseImage,
+				});
 
 			await prisma.answer.create({
 				data: {
@@ -1510,9 +1575,10 @@ export const organizationQuizRouter = createTRPCRouter({
 
 			const answeredCount = answers.length;
 			const target = attempt.quiz.adaptiveLength ?? attempt.maxScore;
+			const isRevision = attempt.quiz.purpose === QuizPurpose.revision;
 
 			// Re-derive ability from every answer so far, including this one.
-			const { ability, topicStats, askedIds } = rebuildAdaptiveState(
+			const { ability, topicStats, askedIds, history } = rebuildAdaptiveState(
 				questions,
 				answers,
 			);
@@ -1526,36 +1592,103 @@ export const organizationQuizRouter = createTRPCRouter({
 				topicIds,
 			);
 
-			const next =
-				answeredCount >= target
+			// --- Which questions are eligible right now ---
+			//
+			// Assessments consider the whole pool and let ability find the level.
+			// Revision walks a ladder, so only the current stage is eligible — the
+			// same narrowing that pinning a difficulty already does. Selection
+			// itself is untouched: the engine still picks within whatever it is
+			// handed, on ability and topic.
+			const perStage = perStageFor(target);
+			const progress = isRevision ? revisionProgress(history, perStage) : null;
+			const transition = isRevision
+				? stageTransition(history, perStage)
+				: { justCompleted: null, nextStage: null };
+
+			const pick = (pool: PoolQuestion[]) =>
+				pool.length === 0
 					? null
 					: selectNextQuestion({
-							pool: toPool(questions),
+							pool,
 							askedIds,
 							ability,
 							topicStats,
 							priorMastery,
 						});
 
+			let next: PoolQuestion | null = null;
+
+			if (!isRevision) {
+				next = answeredCount >= target ? null : pick(toPool(questions));
+			} else if (progress?.currentStage) {
+				const full = toPool(questions);
+				const from = REVISION_STAGES.indexOf(progress.currentStage);
+
+				// Walk forward from the current stage. Normally this picks on the
+				// first pass; the loop only matters when a stage's questions run out
+				// before its pass criteria are met, in which case falling through to
+				// the next stage is far better than ending the session early.
+				for (let i = from; i < REVISION_STAGES.length && !next; i++) {
+					const stage = REVISION_STAGES[i]!;
+					const remaining = full.filter(
+						(q) => q.difficulty === stage && !askedIds.has(q.id),
+					);
+					if (remaining.length === 0) continue;
+
+					// Got it wrong? Practise the same topic again before progressing,
+					// rather than leaving the point unresolved. The engine's struggle
+					// term already leans this way; narrowing makes it certain, while
+					// the stage still has that topic to offer.
+					const sameTopic =
+						i === from && !isCorrect && question.topicId
+							? remaining.filter((q) => q.topicId === question.topicId)
+							: [];
+
+					next = pick(sameTopic.length > 0 ? sameTopic : remaining);
+				}
+			}
+
 			// THE difference between the two modules, and it lives here rather than
 			// in the client: revision marks the answer in front of the student
 			// straight away, because that is the moment they learn. An assessment
 			// withholds everything until the end — returning it and asking the UI
 			// not to render it would leak it to anyone reading the network tab.
-			const feedback =
-				attempt.quiz.purpose === QuizPurpose.revision
-					? {
-							isCorrect,
-							yourAnswer:
-								selectedOption ??
-								responseText ??
-								(responseImage ? "[Image answer]" : null),
-							correctAnswer: question.correctAnswer,
-							explanation: question.explanation,
-							aiFeedback,
-							topicTitle: question.topic?.title ?? null,
-						}
-					: null;
+			const feedback = isRevision
+				? {
+						isCorrect,
+						yourAnswer:
+							selectedOption ??
+							responseText ??
+							(responseImage ? "[Image answer]" : null),
+						correctAnswer: question.correctAnswer,
+						explanation: question.explanation,
+						aiFeedback,
+						topicTitle: question.topic?.title ?? null,
+						// Remediation, produced by the grading call itself and only
+						// populated when the answer was wrong.
+						keyConcept,
+						revisionTip,
+						// True when the next question is a second go at this topic,
+						// so the UI can say so rather than looking like a repeat.
+						retryOnSameTopic:
+							!isCorrect &&
+							next != null &&
+							next.topicId === question.topicId &&
+							transition.justCompleted == null,
+					}
+				: null;
+
+			// Stage gate: "Easy Revision Completed -> Continue to Medium".
+			const stage = isRevision
+				? {
+						current: progress?.currentStage ?? null,
+						justCompleted: transition.justCompleted,
+						next: transition.nextStage,
+						answeredInStage: progress?.answeredInStage ?? 0,
+						perStage,
+						stages: progress?.stages ?? [],
+					}
+				: null;
 
 			if (!next) {
 				const finished = await finalizeAdaptiveAttempt({
@@ -1574,6 +1707,7 @@ export const organizationQuizRouter = createTRPCRouter({
 					totalQuestions: answeredCount,
 					question: null,
 					feedback,
+					stage,
 					result: finished,
 				};
 			}
@@ -1583,9 +1717,16 @@ export const organizationQuizRouter = createTRPCRouter({
 			return {
 				finished: false as const,
 				answeredCount,
-				totalQuestions: target,
+				// A revision session runs until every stage is cleared, so its length
+				// is a target rather than a count — extra practice on a wrong answer
+				// pushes past it by design. Never report a total below what has
+				// already been answered.
+				totalQuestions: isRevision
+					? Math.max(target, answeredCount + 1)
+					: target,
 				question: nextQuestion ? toClientQuestion(nextQuestion) : null,
 				feedback,
+				stage,
 				result: null,
 			};
 		}),

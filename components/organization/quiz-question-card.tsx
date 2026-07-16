@@ -60,7 +60,13 @@ type Props = {
 	question: RunnerQuestion;
 	/** 1-based position in the assessment. */
 	index: number;
-	total: number;
+	/**
+	 * Total questions, when there is an honest one. Null for revision, whose
+	 * length grows if the student needs extra practice — "of 9" turning into
+	 * "of 11" mid-session reads as a bug, and the stage rail carries progress
+	 * there instead.
+	 */
+	total: number | null;
 	value: string;
 	image: { name: string; url: string } | null;
 	onValueChange: (value: string) => void;
@@ -100,7 +106,8 @@ export function QuizQuestionCard({
 			<CardHeader className="gap-1">
 				<div className="flex items-baseline justify-between gap-3">
 					<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-						Question {index} of {total}
+						Question {index}
+						{total != null ? ` of ${total}` : ""}
 					</span>
 					{question.topicTitle && (
 						<span className="truncate text-muted-foreground text-xs">

@@ -2,46 +2,38 @@
 
 import {
 	ArrowRightIcon,
-	BookOpenIcon,
 	CheckCircle2Icon,
+	KeyRoundIcon,
 	LightbulbIcon,
+	RotateCcwIcon,
+	TrophyIcon,
 	XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { MasteryReportCard } from "@/components/organization/mastery-report-card";
 import { QuizQuestionCard } from "@/components/organization/quiz-question-card";
 import { QuizReviewItems } from "@/components/organization/quiz-review-items";
+import { RevisionStageRail } from "@/components/organization/revision-stage-rail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
 	type AdaptiveFeedback,
+	type AdaptiveStage,
+	type StageGate,
 	useAdaptiveAttempt,
 } from "@/hooks/use-adaptive-attempt";
 
-function RevisionBanner() {
-	return (
-		<Card className="border-primary/40 bg-primary/5">
-			<CardContent className="flex items-start gap-3 py-4">
-				<BookOpenIcon className="mt-0.5 size-4 shrink-0 text-primary" />
-				<div>
-					<p className="font-medium text-sm">Revision</p>
-					<p className="text-muted-foreground text-sm">
-						Write your answer, then see the model answer and why. Questions
-						follow whatever you're finding hard — this isn't a test, so getting
-						one wrong is the point.
-					</p>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
+const STAGE_LABEL: Record<string, string> = {
+	easy: "Easy",
+	medium: "Medium",
+	hard: "Hard",
+};
 
 /**
- * The moment the student actually learns: their answer, the model answer, and
- * why — shown immediately rather than saved for a report they may never open.
- * An assessment deliberately withholds all of this until the end.
+ * The moment the student actually learns: their answer, what they missed, the
+ * model answer, and one thing to hold onto — shown immediately rather than saved
+ * for a report they may never open. An assessment withholds all of this.
  */
 function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
 	const ok = feedback.isCorrect;
@@ -67,7 +59,7 @@ function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
 						) : (
 							<XCircleIcon className="size-4" />
 						)}
-						{ok ? "That's right" : "Not quite — worth a second look"}
+						{ok ? "That's right" : "Not quite"}
 					</p>
 					{feedback.topicTitle && (
 						<Badge variant="outline">{feedback.topicTitle}</Badge>
@@ -83,6 +75,29 @@ function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
 					</div>
 				)}
 
+				{/* Why it was wrong, before the model answer — read the diagnosis
+				    before the cure. Only present on a wrong answer. */}
+				{feedback.aiFeedback && !ok && (
+					<div className="space-y-1">
+						<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+							Why that isn't right
+						</p>
+						<p className="text-sm">{feedback.aiFeedback}</p>
+					</div>
+				)}
+
+				{feedback.keyConcept && (
+					<div className="flex items-start gap-2 rounded-md border bg-background p-3">
+						<KeyRoundIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+						<div className="space-y-0.5">
+							<p className="font-medium text-xs uppercase tracking-wide">
+								Key concept
+							</p>
+							<p className="text-sm">{feedback.keyConcept}</p>
+						</div>
+					</div>
+				)}
+
 				<div className="space-y-1 rounded-md border bg-background p-3">
 					<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 						Model answer
@@ -90,13 +105,8 @@ function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
 					<p className="whitespace-pre-wrap text-sm">{feedback.correctAnswer}</p>
 				</div>
 
-				{feedback.aiFeedback && (
-					<div className="space-y-1">
-						<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-							On your answer
-						</p>
-						<p className="text-sm">{feedback.aiFeedback}</p>
-					</div>
+				{feedback.aiFeedback && ok && (
+					<p className="text-muted-foreground text-sm">{feedback.aiFeedback}</p>
 				)}
 
 				{feedback.explanation && (
@@ -107,6 +117,64 @@ function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
 						</p>
 					</div>
 				)}
+
+				{feedback.revisionTip && (
+					<div className="flex items-start gap-2 rounded-md border border-primary/40 bg-primary/5 p-3">
+						<RotateCcwIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+						<div className="space-y-0.5">
+							<p className="font-medium text-xs uppercase tracking-wide">
+								Revision tip
+							</p>
+							<p className="text-sm">{feedback.revisionTip}</p>
+						</div>
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+/** "Easy Revision Completed -> Continue to Medium". */
+function StageGateCard({
+	gate,
+	stage,
+	onContinue,
+}: {
+	gate: StageGate;
+	stage: AdaptiveStage | null;
+	onContinue: () => void;
+}) {
+	const done = stage?.stages.find((s) => s.stage === gate.justCompleted);
+	const label = STAGE_LABEL[gate.justCompleted] ?? gate.justCompleted;
+	const nextLabel = gate.next ? (STAGE_LABEL[gate.next] ?? gate.next) : null;
+
+	return (
+		<Card className="border-emerald-500/40 bg-emerald-500/5">
+			<CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
+				<div className="flex items-center gap-3">
+					{nextLabel ? (
+						<CheckCircle2Icon className="size-8 shrink-0 text-emerald-600" />
+					) : (
+						<TrophyIcon className="size-8 shrink-0 text-emerald-600" />
+					)}
+					<div>
+						<p className="font-semibold text-emerald-700 text-lg dark:text-emerald-400">
+							{label} Revision Completed
+						</p>
+						<p className="text-muted-foreground text-sm">
+							{done ? `${done.correct} of ${done.answered} correct` : null}
+							{done && !done.passed
+								? " — you've practised this enough for now, so let's move on."
+								: nextLabel
+									? ` — ${nextLabel.toLowerCase()} questions ask you to go further.`
+									: " — that's the whole ladder."}
+						</p>
+					</div>
+				</div>
+				<Button onClick={onContinue} size="lg">
+					{nextLabel ? `Continue to ${nextLabel}` : "See your summary"}
+					<ArrowRightIcon className="size-4" />
+				</Button>
 			</CardContent>
 		</Card>
 	);
@@ -118,9 +186,10 @@ function FeedbackPanel({ feedback }: { feedback: AdaptiveFeedback }) {
  * Runs on exactly the same engine as an adaptive assessment — same pool, same
  * ability estimate, same selection, same per-topic mastery — through the same
  * useAdaptiveAttempt hook. What differs is the point of the exercise: revision
- * marks each answer in front of you and explains it, and never hands out a
- * pass/fail, because a bad score on a revision session means the revision was
- * aimed at the right place.
+ * marks each answer in front of you, explains it, gives you another go at
+ * whatever you missed, and walks a visible Easy -> Medium -> Hard ladder. It
+ * never hands out a pass/fail, because a low score on a session aimed at your
+ * weak topics means the revision was aimed correctly.
  */
 export function RevisionRunner({
 	quizId,
@@ -134,8 +203,8 @@ export function RevisionRunner({
 	const a = useAdaptiveAttempt(quizId);
 	const total = a.total || totalQuestions;
 
-	// Finished, and the last answer's feedback has been read.
-	if (a.result && !a.feedback) {
+	// Finished, and the last mark and gate have been read.
+	if (a.result && a.phase === "done") {
 		return (
 			<div className="space-y-6">
 				<MasteryReportCard
@@ -172,44 +241,66 @@ export function RevisionRunner({
 	if (!a.started) {
 		return (
 			<div className="space-y-6">
-				<RevisionBanner />
-				<div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
-					<p className="max-w-md text-muted-foreground text-sm">
-						{title} · {total} questions, answered in your own words. You'll see
-						the model answer after each one.
-					</p>
-					<Button onClick={a.start} loading={a.isStarting}>
-						Start revising
-					</Button>
-				</div>
+				<Card className="border-dashed">
+					<CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+						<div className="space-y-1">
+							<p className="font-medium">{title}</p>
+							<p className="mx-auto max-w-md text-muted-foreground text-sm">
+								Around {total} questions, answered in your own words. You'll work
+								up through easy, medium and hard — see the model answer after
+								every one, and get another go at anything you miss.
+							</p>
+						</div>
+						<Button onClick={a.start} loading={a.isStarting} size="lg">
+							Start Questions &amp; Answers
+						</Button>
+					</CardContent>
+				</Card>
 			</div>
 		);
 	}
 
-	const position = Math.min(a.answered + (a.feedback ? 0 : 1), total);
+	const stageLabel = a.stage?.current
+		? (STAGE_LABEL[a.stage.current] ?? a.stage.current)
+		: null;
 
 	return (
-		<div className="space-y-6">
-			<RevisionBanner />
-
-			<div className="space-y-2">
-				<div className="flex items-baseline justify-between gap-3">
-					<span className="font-medium text-sm">{title}</span>
-					<span className="text-muted-foreground text-xs tabular-nums">
-						{a.answered} of {total} answered
-					</span>
+		<div className="space-y-5">
+			{/* The workspace header: where you are on the ladder, not a score. */}
+			{a.stage && a.stage.stages.length > 0 && (
+				<div className="space-y-2">
+					<RevisionStageRail stage={a.stage} />
+					<div className="flex flex-wrap items-baseline justify-between gap-2">
+						<p className="text-muted-foreground text-xs">
+							{stageLabel
+								? `${stageLabel} — question ${a.stage.answeredInStage + (a.phase === "question" ? 1 : 0)} of about ${a.stage.perStage}`
+								: "Session complete"}
+						</p>
+						<p className="text-muted-foreground text-xs tabular-nums">
+							{a.answered} answered
+						</p>
+					</div>
 				</div>
-				<Progress value={(a.answered / Math.max(total, 1)) * 100} />
-			</div>
+			)}
 
-			{/* Feedback replaces the question rather than sitting under it, so the
-			    student reads the explanation instead of skimming past to the next. */}
-			{a.feedback ? (
+			{a.phase === "gate" && a.gate ? (
+				<StageGateCard gate={a.gate} stage={a.stage} onContinue={a.advanceStage} />
+			) : a.phase === "feedback" && a.feedback ? (
 				<>
 					<FeedbackPanel feedback={a.feedback} />
-					<div className="flex items-center justify-end">
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						{a.feedback.retryOnSameTopic ? (
+							<span className="flex items-center gap-2 text-muted-foreground text-xs">
+								<RotateCcwIcon className="size-3.5 shrink-0" />
+								Another question on{" "}
+								{a.feedback.topicTitle ?? "this topic"} next, so you can put
+								that right.
+							</span>
+						) : (
+							<span />
+						)}
 						<Button onClick={a.advance}>
-							{a.result ? "See your summary" : "Next question"}
+							{a.feedback.retryOnSameTopic ? "Try another" : "Next question"}
 							<ArrowRightIcon className="size-4" />
 						</Button>
 					</div>
@@ -218,8 +309,8 @@ export function RevisionRunner({
 				<>
 					<QuizQuestionCard
 						question={a.question}
-						index={position}
-						total={total}
+						index={a.answered + 1}
+						total={null}
 						value={a.value}
 						image={a.image}
 						onValueChange={a.setValue}
@@ -227,7 +318,7 @@ export function RevisionRunner({
 						onImageRemoved={() => a.setImage(null)}
 						disabled={a.isSubmitting}
 					/>
-					<div className="flex items-center justify-between gap-3">
+					<div className="flex flex-wrap items-center justify-between gap-3">
 						<span className="text-muted-foreground text-xs">
 							Answer in your own words — it's marked against a model answer, not
 							matched word for word.
