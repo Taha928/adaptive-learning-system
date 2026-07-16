@@ -1,5 +1,10 @@
 import { init } from "@sentry/nextjs";
+import { assertAuthEmailConfigured } from "@/lib/auth/preflight";
 import { env } from "@/lib/env";
+
+// Before anything else: a production server that cannot send email cannot
+// complete a sign-up, and must not pretend otherwise by starting.
+assertAuthEmailConfigured();
 
 const enableSentry = process.env.NODE_ENV !== "development";
 

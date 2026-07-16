@@ -4,16 +4,48 @@ A ~5-minute walkthrough that shows every graded feature. Practise it once before
 
 ## Setup (before the room)
 
-1. Ensure `.env` has a working `GOOGLE_GENERATIVE_AI_API_KEY` and the Neon `DATABASE_URL`.
-2. `npm run db:seed` (creates the two demo logins below).
-3. `npm run dev` and open the app.
+1. Ensure `.env` has a working `OPENAI_API_KEY`. Every AI feature — quiz and
+   revision generation, grading, lessons, study plans, the tutor chat — goes
+   through `lib/ai/tutor.ts`, which uses OpenAI (`gpt-4o-mini`).
+2. Start the database: `docker compose up -d` (local PostgreSQL 17). `DATABASE_URL`
+   points at it. Supabase is used for file storage only, not for the database and
+   not for auth.
+3. `pnpm db:migrate` then `pnpm dev`, and open the app.
 
-**Logins** (org: *Demo Academy*)
+## Signing in
+
+The app has real authentication (Better Auth): email + password, Google, email
+verification, and password reset. **Sign up normally** at `/auth/sign-up` — a
+personal workspace named "<Your First Name>'s Workspace" is created for you on
+first login, so a fresh account can demo everything.
+
+Notes:
+
+- Email verification and verification mail are **production-only**. In development
+  you can sign in immediately after signing up, with no mail provider configured.
+- Google sign-in needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and the
+  callback `<app-url>/api/auth/callback/google` registered in the Google console.
+- In production, `RESEND_API_KEY` and `EMAIL_FROM` are **required** — sign-up
+  sends a verification mail and refuses sign-in until it is confirmed. The server
+  refuses to start without them rather than failing on a user's sign-up.
+
+### Optional: the seeded demo accounts
+
+There is a seed fixture for local demos, so you don't have to click through
+sign-up on stage. It is not part of the app and never runs on deploy:
+
+```
+$env:SEED_DB="true"; pnpm with-dev-env -- vitest run tests/seed/seed-user.test.ts
+```
 
 | Role | Email | Password |
 |---|---|---|
 | Instructor (owner) | `admin@tutor.test` | `Password123!` |
 | Student (member) | `student@tutor.test` | `Password123!` |
+
+Both are ordinary user rows hashed with Better Auth's own hasher — they log in
+through exactly the same flow as a real account. Delete them before any real
+deployment: the password is in this file.
 
 The sample file `sample-biology.pdf` (repo root) is ready to upload.
 
@@ -24,10 +56,10 @@ The sample file `sample-biology.pdf` (repo root) is ready to upload.
 1. **Home** — point out the overview: stat cards, recent activity, quick actions.
 2. **Courses → New Course** — e.g. "Biology 101". Open it.
 3. **Add Material → Upload PDF** — pick `sample-biology.pdf`. Show that text is extracted and stored (status → *ready*).
-4. **Generate Topics** on the material — Gemini splits it into topics (Cell, Photosynthesis, DNA…). Show the Topics section fill in.
+4. **Generate Topics** on the material — the tutor splits it into topics (Cell, Photosynthesis, DNA…). Show the Topics section fill in.
 5. **Quizzes → Generate Quiz from Topic** — pick a topic, choose difficulty, generate. Show the AI-generated questions (mixed types: MCQ, true/false, short-answer).
 
-> Talking point: *"The instructor never writes questions — Gemini generates them from the uploaded material, validated against a strict schema."*
+> Talking point: *"The instructor never writes questions — the model generates them from the uploaded material, validated against a strict schema."*
 
 ## Part 2 — Student: the adaptive loop (log in as student@tutor.test)
 
@@ -38,7 +70,7 @@ The sample file `sample-biology.pdf` (repo root) is ready to upload.
 8. Take the **next** quiz and **score high** → show the difficulty **climb** (easy → medium → hard).
 9. **My Attempts** — show the full history; click **Review** to re-open any past result.
 
-> Talking point: *"Quiz score → mastery (an exponential moving average) → a deterministic difficulty rule → the next quiz regenerates at the new level. The DS layer models the learner; Gemini generates the content."*
+> Talking point: *"Quiz score → mastery (an exponential moving average) → a deterministic difficulty rule → the next quiz regenerates at the new level. The DS layer models the learner; the model generates the content."*
 
 ## Part 3 — Personalization & evidence
 

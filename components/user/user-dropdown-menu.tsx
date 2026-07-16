@@ -246,6 +246,7 @@ export function UserDropDownMenu(
 								<UserAvatar
 									className="size-6"
 									name={user.name}
+									email={user.email}
 									src={user.image ?? undefined}
 								/>
 								<div className="flex w-full flex-col truncate text-left group-data-[collapsible=icon]:hidden">

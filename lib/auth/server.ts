@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
+import { workspaceNameFor } from "@/lib/auth/profile";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
@@ -122,9 +123,7 @@ export const ensureActiveWorkspace = cache(async (): Promise<string | null> => {
 		try {
 			const created = await auth.api.createOrganization({
 				body: {
-					name: session.user.name
-						? `${session.user.name}'s Workspace`
-						: "My Workspace",
+					name: workspaceNameFor(session.user.name),
 					slug: `ws-${session.user.id.toLowerCase()}`,
 				},
 				headers: requestHeaders,
